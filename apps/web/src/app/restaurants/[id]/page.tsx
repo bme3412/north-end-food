@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getRestaurant, listMenuItems } from "@/lib/api";
-import { formatDate, formatPrice, formatPriceLevel, formatWaitMinutes } from "@/lib/format";
+import { formatBusynessPercent, formatDate, formatPrice, formatPriceLevel } from "@/lib/format";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { PriceProfileCard } from "@/components/PriceProfileCard";
 import { NotConnectedCard } from "@/components/NotConnectedCard";
@@ -28,6 +28,7 @@ export default async function RestaurantPage({ params }: PageProps) {
 
   const hasLiveDetails = restaurant.rating != null;
   const lastRefreshed = formatDate(restaurant.last_verified_at);
+  const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6">
@@ -80,8 +81,8 @@ export default async function RestaurantPage({ params }: PageProps) {
                 {restaurant.open_now ? "Open now" : "Closed now"}
               </span>
             ) : null}
-            {restaurant.wait_minutes != null ? (
-              <span className="rounded-full bg-linen-2 px-3 py-1">{formatWaitMinutes(restaurant.wait_minutes)}</span>
+            {restaurant.busyness_percent != null ? (
+              <span className="rounded-full bg-linen-2 px-3 py-1">{formatBusynessPercent(restaurant.busyness_percent)}</span>
             ) : null}
           </>
         ) : (
@@ -172,13 +173,26 @@ export default async function RestaurantPage({ params }: PageProps) {
       {/* Popularity / demand */}
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
+        {restaurant.weekly_popularity ? (
+          <p className="mt-1 text-xs text-muted">
+            Typical busyness by day of week — a historical pattern from BestTime&apos;s aggregated foot-traffic
+            data, not a live reading. The &quot;{formatBusynessPercent(restaurant.busyness_percent)}&quot; badge up
+            top is the separate real-time number.
+            {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
+          </p>
+        ) : null}
         <div className="mt-3 rounded-3xl border border-line bg-card p-5">
           {restaurant.weekly_popularity ? (
             <PopularityChart weekly={restaurant.weekly_popularity} />
+          ) : restaurant.busyness_percent != null ? (
+            <NotConnectedCard
+              title={formatBusynessPercent(restaurant.busyness_percent)}
+              message="That's the current-hour reading from BestTime's Live Forecast. The full Mon-Sun pattern comes from a separate, heavier BestTime call (New Forecast) that hasn't run for this restaurant yet — run scripts/refresh_busyness.py."
+            />
           ) : (
             <NotConnectedCard
               title="Crowd data needs an API key"
-              message="Add BESTTIME_API_KEY to apps/api's .env and run scripts/refresh_busyness.py to populate the weekly pattern."
+              message="Add BESTTIME_API_KEY to apps/api's .env and run scripts/refresh_busyness.py to populate current busyness and the weekly pattern."
             />
           )}
         </div>

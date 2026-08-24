@@ -55,9 +55,16 @@ class RestaurantBusynessStats(Base):
     restaurant_id: Mapped[str] = mapped_column(
         String(16), ForeignKey("restaurants.restaurant_id", ondelete="CASCADE"), primary_key=True
     )
-    wait_minutes: Mapped[int | None] = mapped_column(Integer)
-    # 7 values Mon..Sun, each 0-1 normalized busyness for "now" in that day's pattern.
+    # 0-100 forecasted busyness for the current hour (BestTime's Live
+    # Forecast) — real-time-ish, refreshed hourly.
+    busyness_percent: Mapped[int | None] = mapped_column(Integer)
+
+    # 7 values Mon..Sun, 0-1 normalized day_mean from BestTime's New Forecast
+    # (typical/historical busyness, not real-time) — a heavier call than Live
+    # Forecast, so it's tracked with its own retrieved_at and a much longer
+    # TTL rather than refetched every time busyness_percent refreshes.
     weekly_pattern: Mapped[list[float] | None] = mapped_column(ARRAY(Numeric(3, 2)))
+    weekly_pattern_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(String(32), default="besttime", nullable=False)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

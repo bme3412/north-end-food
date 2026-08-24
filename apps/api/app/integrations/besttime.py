@@ -1,11 +1,22 @@
-"""BestTime client for restaurant wait time + weekly popularity pattern.
+"""BestTime client for restaurant crowd data — current busyness (Live
+Forecast) and the typical weekly pattern (New Forecast).
 
-Inert without BESTTIME_API_KEY: fetch_live_forecast returns None immediately
-so callers (scripts/refresh_busyness.py) can no-op cleanly until a key is set.
+Inert without BESTTIME_API_KEY: both fetch functions return None
+immediately so callers (scripts/refresh_busyness.py) can no-op cleanly
+until a key is set.
 
-Field names below follow BestTime's public "Live Forecast" response shape as
-documented at https://besttime.app/api/ — verify against a live response once
-a real key is configured, since this parsing isn't exercised by tests here.
+Both endpoints verified against real responses (2026-08-24), not guessed:
+
+- Live Forecast returns analysis.venue_forecasted_busyness, a 0-100
+  busyness percentage for the CURRENT hour only. No wait-minutes field,
+  no 7-day array. (An earlier version of this client guessed at a
+  wait-minutes field that doesn't exist — that was wrong.)
+- New Forecast (POST /api/v1/forecasts, not the same endpoint as Live)
+  returns analysis: a 7-element array, Monday->Sunday in order, each with
+  day_info.day_mean (0-100 typical busyness for that day) and an hourly
+  day_raw breakdown. This is what a real weekly popularity chart needs.
+  It's a heavier call than Live Forecast — treat it as historical/typical
+  data, refreshed far less often, not a live reading.
 """
 
 from __future__ import annotations
@@ -17,12 +28,12 @@ import httpx
 from app.config import settings
 
 LIVE_FORECAST_URL = "https://besttime.app/api/v1/forecasts/live"
+NEW_FORECAST_URL = "https://besttime.app/api/v1/forecasts"
 
 
 @dataclass(frozen=True)
 class BusynessForecast:
-    wait_minutes: int | None
-    weekly_pattern: list[float] | None  # Mon..Sun, 0-1 normalized
+    busyness_percent: int | None  # 0-100, forecasted busyness for the current hour
 
 
 def is_configured() -> bool:
@@ -33,7 +44,9 @@ def fetch_live_forecast(venue_name: str, venue_address: str) -> BusynessForecast
     if not is_configured():
         return None
 
-    with httpx.Client(timeout=15.0) as client:
+    # First-time forecasts for a venue BestTime hasn't analyzed before run a
+    # live analysis pass and can take well over 15s; repeat calls are fast.
+    with httpx.Client(timeout=60.0) as client:
         response = client.post(
             LIVE_FORECAST_URL,
             params={
@@ -49,11 +62,31 @@ def fetch_live_forecast(venue_name: str, venue_address: str) -> BusynessForecast
         return None
 
     analysis = payload.get("analysis") or {}
-    wait_minutes = analysis.get("venue_forecasted_wait_minutes")
+    return BusynessForecast(busyness_percent=analysis.get("venue_forecasted_busyness"))
 
-    day_raw = payload.get("day_info", {}).get("week_raw") or payload.get("week_raw")
-    weekly_pattern = None
-    if isinstance(day_raw, list) and len(day_raw) == 7:
-        weekly_pattern = [round(max(0.0, min(1.0, value / 100)), 2) for value in day_raw]
 
-    return BusynessForecast(wait_minutes=wait_minutes, weekly_pattern=weekly_pattern)
+def fetch_week_forecast(venue_name: str, venue_address: str) -> list[float] | None:
+    """Returns 7 values Mon..Sun, 0-1 normalized typical busyness, or None."""
+    if not is_configured():
+        return None
+
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            NEW_FORECAST_URL,
+            params={
+                "api_key_private": settings.besttime_api_key,
+                "venue_name": venue_name,
+                "venue_address": venue_address,
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+    if payload.get("status") != "OK":
+        return None
+
+    days = payload.get("analysis") or []
+    if len(days) != 7:
+        return None
+
+    return [round(max(0.0, min(1.0, day["day_info"]["day_mean"] / 100)), 2) for day in days]

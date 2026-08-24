@@ -55,9 +55,10 @@ export type RestaurantDetail = RestaurantSummary & {
   review_summary_disclosure: string | null;
   reviews_uri: string | null;
 
-  wait_minutes: number | null;
+  busyness_percent: number | null;
   weekly_popularity: number[] | null;
   crowd_updated_at: string | null;
+  weekly_popularity_updated_at: string | null;
 
   price_profile: PriceProfile;
   provenance: ProvenanceEntry[];

@@ -101,14 +101,14 @@ null, same as the hand-seeded data.
 
 ## Refresh rating, hours, and review summaries
 
-Requires `GOOGLE_MAPS_API_KEY` in `.env`, and (for the weekly popularity
-chart / wait estimate) `BESTTIME_API_KEY`. Both are wired but inert without
-a key — the scripts below print a message and exit cleanly if theirs is unset.
+Requires `GOOGLE_MAPS_API_KEY` in `.env`, and (for current busyness)
+`BESTTIME_API_KEY`. Both are wired but inert without a key — the scripts
+below print a message and exit cleanly if theirs is unset.
 
 ```bash
 python scripts/link_google_places.py     # Text Search -> restaurant_external_ids (once)
 python scripts/refresh_place_stats.py    # rating, price, hours, AI place/review summaries
-python scripts/refresh_busyness.py       # wait estimate + weekly pattern
+python scripts/refresh_busyness.py       # current busyness percent
 ```
 
 `refresh_place_stats.py` uses the current Places API's `generativeSummary`
@@ -119,11 +119,28 @@ single narrative per place, not a food/service/value/atmosphere breakdown,
 and isn't guaranteed for every place. Every AI-generated summary shown in
 the UI carries Google's exact disclosure text, not a hardcoded one.
 
+`refresh_busyness.py` uses BestTime's Live Forecast endpoint, which returns
+a 0-100 busyness percentage for the *current hour* only — there's no
+wait-minutes field and no 7-day array in that response, so the "Popularity
+this week" chart stays an honest empty state until a separate (unimplemented)
+BestTime week-forecast endpoint is wired up.
+
+Both refresh scripts cache in Postgres and skip restaurants refreshed
+within `--max-age-hours` (default 24h for Places, 1h for BestTime, since
+crowd data is time-sensitive) — nothing calls Google or BestTime on a page
+load, only when you explicitly run these scripts. Pass `--force` to
+refetch regardless of freshness.
+
 ## Honest seed caveats
 
-- **Neptune Oyster** and **Bricco** items/prices come from official pages (2026-08-23).
-- **Modern Pastry** names come from the official pastry list; prices were not published, so they are null.
-- **Pizzeria Regina** names come from the official PDF; only the 16" original pie had a fully legible price.
-- **Giacomo's** names mix the official site with widely listed Yelp/delivery dishes. Most à-la-carte prices are not on giacomosboston.com; those prices are lower-confidence until Phase 1 official extraction.
+Refreshed 2026-08-24 against a full audit of each live site — all five
+restaurants are now at (or near) full official-menu coverage, not the
+smaller Sprint 0 samples from 2026-08-23.
+
+- **Neptune Oyster**, **Pizzeria Regina**, and **Bricco** items/prices come from official pages, complete across every section.
+- **Giacomo's** now comes entirely from the official site (giacomosboston.com), not Yelp — the site renders its menu via JavaScript, so this required a rendered-browser fetch rather than the plain HTTP fetch `scripts/ingest_menu.py` uses; re-running that script against it will not reproduce this data until a headless-browser fetch path exists.
+- **Modern Pastry** names come from the official pastry list (79 items, every section); prices were not published, so they stay null.
+- Deliberately excluded everywhere: beverages (beer/wine/cocktails/coffee) and per-topping add-ons — this schema models dishes, not drinks or modifiers.
+- Bricco's menu spans 7 official sub-pages; `menu_sources` is restaurant-granularity, not item-granularity, so its recorded source URL is the landing page that links all of them rather than each item's exact sub-page.
 
 Missing prices are never invented (`—` or `MKT`).

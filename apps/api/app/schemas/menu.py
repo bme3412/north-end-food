@@ -76,9 +76,10 @@ class RestaurantDetail(RestaurantSummary):
     reviews_uri: str | None = None
 
     # BestTime — null until BESTTIME_API_KEY is configured and refreshed.
-    wait_minutes: int | None = None
+    busyness_percent: int | None = None
     weekly_popularity: list[float] | None = None
     crowd_updated_at: datetime | None = None
+    weekly_popularity_updated_at: datetime | None = None
 
     price_profile: PriceProfileOut
     provenance: list[ProvenanceEntry] = Field(default_factory=list)

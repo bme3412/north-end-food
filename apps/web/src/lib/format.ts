@@ -16,10 +16,10 @@ export function formatPriceLevel(level: number | null | undefined): string {
   return "$".repeat(Math.max(1, level));
 }
 
-export function formatWaitMinutes(minutes: number | null | undefined): string {
-  if (minutes == null) return "";
-  if (minutes <= 0) return "No wait";
-  return `~${minutes} min wait`;
+export function formatBusynessPercent(percent: number | null | undefined): string {
+  if (percent == null) return "";
+  if (percent <= 15) return "Not busy";
+  return `${percent}% busy right now`;
 }
 
 export function formatDate(value: string | null | undefined): string | null {
