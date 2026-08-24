@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -42,7 +43,7 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
     <Map
       mapboxAccessToken={token}
       initialViewState={NORTH_END}
-      mapStyle="mapbox://styles/mapbox/light-v11"
+      mapStyle="mapbox://styles/mapbox/streets-v12"
       style={{ width: "100%", height: "100%" }}
       attributionControl={false}
       onClick={() => onSelect(null)}
@@ -68,7 +69,7 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
               className={`flex items-center justify-center rounded-full border-2 font-bold shadow-md transition-transform ${
                 active
                   ? "scale-110 border-ink bg-tomato text-linen"
-                  : "border-card bg-ink text-linen hover:scale-105"
+                  : "border-card bg-basil text-linen hover:scale-105"
               }`}
               style={{ width: size, height: size, fontSize: active ? 14 : 12 }}
             >
@@ -106,9 +107,12 @@ function SelectedPlaceCard({
               className="h-12 w-12 shrink-0 rounded-xl object-cover"
             />
             <div className="min-w-0">
-              <p className="font-[family-name:var(--font-fraunces)] text-lg font-medium leading-tight">
+              <Link
+                href={`/restaurants/${place.restaurant_id}`}
+                className="font-[family-name:var(--font-fraunces)] text-lg font-medium leading-tight hover:underline"
+              >
                 {place.name}
-              </p>
+              </Link>
               <p className="mt-1 text-xs text-muted">{place.address}</p>
             </div>
           </div>
