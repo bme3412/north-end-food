@@ -17,6 +17,7 @@ from sqlalchemy import select  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
 from app.models import MenuItem, MenuSnapshot  # noqa: E402
+from app.pricing import record_price_observations  # noqa: E402
 
 
 def main() -> None:
@@ -58,8 +59,9 @@ def main() -> None:
 
         if decision == "a":
             snapshot.extraction_status = "complete"
+            written = record_price_observations(db, snapshot)
             db.commit()
-            print("approved — now live in search.")
+            print(f"approved — now live in search. {written} price observation(s) recorded.")
         elif decision == "r":
             db.query(MenuItem).filter(MenuItem.menu_snapshot_id == snapshot.menu_snapshot_id).delete()
             snapshot.extraction_status = "pending"

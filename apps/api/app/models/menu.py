@@ -9,6 +9,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
@@ -123,3 +124,37 @@ class MenuItem(Base):
     snapshot: Mapped[MenuSnapshot] = relationship(back_populates="items")
     restaurant: Mapped[Restaurant] = relationship(back_populates="menu_items")
     dish: Mapped[CanonicalDish | None] = relationship()
+
+
+class PriceObservation(Base):
+    """One row per priced MenuItem, written once that item's snapshot is
+    trusted (complete/manual_seed). Since a new snapshot creates entirely new
+    MenuItem rows rather than updating one persistent row, this is what turns
+    a chain of snapshots into a queryable price history for a
+    (restaurant, canonical_dish) pair over time. restaurant_id/canonical_dish
+    are copied from the item at write time — an immutable fact about what was
+    observed, not a live join, so later re-categorization of the item doesn't
+    rewrite history.
+    """
+
+    __tablename__ = "price_observations"
+    __table_args__ = (UniqueConstraint("menu_item_id", name="uq_price_observation_menu_item"),)
+
+    price_observation_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    menu_item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("menu_items.menu_item_id", ondelete="CASCADE"), nullable=False
+    )
+    restaurant_id: Mapped[str] = mapped_column(
+        String(16), ForeignKey("restaurants.restaurant_id", ondelete="CASCADE"), nullable=False
+    )
+    canonical_dish: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("canonical_dishes.canonical_dish_id")
+    )
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    service_mode: Mapped[str] = mapped_column(String(16), default="dine_in", nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

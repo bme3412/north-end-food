@@ -8,7 +8,8 @@ from uuid import uuid5, NAMESPACE_URL
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import CanonicalDish, MenuItem, MenuSnapshot, MenuSource, Restaurant
+from app.models import CanonicalDish, MenuItem, MenuSnapshot, MenuSource, PriceObservation, Restaurant
+from app.pricing import record_price_observations
 from app.seed_data import CANONICAL_DISHES, RESTAURANTS
 
 
@@ -23,6 +24,7 @@ def _hash_items(items: list[dict]) -> str:
 
 def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
     if reset:
+        db.query(PriceObservation).delete()
         db.query(MenuItem).delete()
         db.query(MenuSnapshot).delete()
         db.query(MenuSource).delete()
@@ -84,6 +86,9 @@ def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
                 )
             )
             item_count += 1
+
+        db.flush()
+        record_price_observations(db, snapshot)
 
     db.commit()
     return {"restaurants": restaurant_count, "items": item_count, "dishes": len(CANONICAL_DISHES)}
