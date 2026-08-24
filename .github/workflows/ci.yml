@@ -25,9 +25,9 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://northend:northend@localhost:5432/northend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -47,9 +47,9 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: "npm"
@@ -57,5 +57,8 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
+      # `next build` typechecks internally after generating route types
+      # (.next/types) — a standalone `tsc --noEmit` runs before those types
+      # exist on a clean checkout and fails with spurious "Cannot find name
+      # 'LayoutProps'" errors, so build is the real typecheck here.
       - run: npm run build
