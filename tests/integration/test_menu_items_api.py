@@ -61,6 +61,53 @@ def test_meta_reflects_seeded_data(client):
     assert body["min_price"] <= body["max_price"]
 
 
+def test_meta_ingredients_facet_is_canonical_and_deduped(client):
+    response = client.get("/menu-items/meta")
+    body = response.json()
+    assert "Mushroom" in body["ingredients"]
+    # Deduped: "mushroom" and "mushrooms" collapse to one canonical facet value.
+    assert body["ingredients"].count("Mushroom") == 1
+
+
+def test_ingredient_filter_matches_plural_variant(client):
+    response = client.get("/menu-items", params={"ingredient": "mushroom"})
+    body = response.json()
+    assert body["total"] >= 1
+    for item in body["items"]:
+        haystack = " ".join(i.lower() for i in (item["ingredients"] or []))
+        assert "mushroom" in haystack
+
+
+def test_ingredient_filter_matches_across_spelling_variants(client):
+    # Seed data has items spelled both "bufala mozzarella" and "buffalo
+    # mozzarella"; searching the anglicized spelling should find both via
+    # the shared canonical ingredient's alias list, not a raw-text
+    # substring match (which could never catch the "bufala" item).
+    response = client.get("/menu-items", params={"ingredient": "buffalo mozzarella"})
+    body = response.json()
+    assert body["total"] >= 1
+    raw_ingredient_lists = [set(i.lower() for i in (item["ingredients"] or [])) for item in body["items"]]
+    assert any("bufala mozzarella" in ingredients for ingredients in raw_ingredient_lists)
+
+
+def test_ingredient_mode_all_requires_every_ingredient(client):
+    response = client.get(
+        "/menu-items", params={"ingredient": "mozzarella,tomato", "ingredient_mode": "all"}
+    )
+    body = response.json()
+    assert body["total"] >= 1
+    for item in body["items"]:
+        haystack = " ".join(i.lower() for i in (item["ingredients"] or []))
+        assert "mozzarella" in haystack
+        assert "tomato" in haystack
+
+
+def test_free_text_search_matches_across_spelling_variants(client):
+    response = client.get("/menu-items", params={"q": "buffalo mozzarella"})
+    body = response.json()
+    assert body["total"] >= 1
+
+
 def test_menu_item_not_found(client):
     response = client.get("/menu-items/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404

@@ -127,6 +127,7 @@ export type FilterMeta = {
   categories: string[];
   proteins: string[];
   dietary: string[];
+  ingredients: string[];
   min_price: number | null;
   max_price: number | null;
 };

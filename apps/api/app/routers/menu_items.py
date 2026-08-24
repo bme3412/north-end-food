@@ -6,8 +6,8 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant
-from app.queries import item_with_source_query, latest_snapshot_ids
+from app.models import Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.queries import ingredient_match_clause, item_with_source_query, latest_snapshot_ids
 from app.schemas import MenuItemList, MenuItemOut
 from app.schemas.menu import PlaceMatch
 from app.search import parse_query
@@ -70,8 +70,8 @@ def _token_clause(token: str):
         MenuItem.sauce.ilike(like),
         Restaurant.name.ilike(like),
         func.array_to_string(MenuItem.protein, " ").ilike(like),
-        func.array_to_string(MenuItem.ingredients, " ").ilike(like),
         func.array_to_string(MenuItem.dietary_tags, " ").ilike(like),
+        ingredient_match_clause(token),
     )
 
 
@@ -84,6 +84,7 @@ def _apply_filters(
     protein: str | None,
     protein_mode: str,
     ingredient: str | None,
+    ingredient_mode: str,
     dietary: str | None,
     restaurant_id: str | None,
     min_price: Decimal | None,
@@ -111,9 +112,14 @@ def _apply_filters(
         else:
             stmt = stmt.where(MenuItem.protein.overlap(proteins))
 
-    if ingredient:
-        like = f"%{ingredient.lower()}%"
-        stmt = stmt.where(func.array_to_string(MenuItem.ingredients, " ").ilike(like))
+    ingredient_terms = _split(ingredient)
+    if ingredient_terms:
+        clauses = [ingredient_match_clause(term) for term in ingredient_terms]
+        if ingredient_mode == "all":
+            for clause in clauses:
+                stmt = stmt.where(clause)
+        else:
+            stmt = stmt.where(or_(*clauses))
 
     diet_tags = list(dict.fromkeys(_split(dietary) + list(parsed_dietary)))
     for tag in diet_tags:
@@ -178,10 +184,18 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
             dietary.add(value)
         if item.price is not None:
             prices.append(item.price)
+    ingredients = db.scalars(
+        select(Ingredient.canonical_name)
+        .join(MenuItemIngredient, MenuItemIngredient.ingredient_id == Ingredient.ingredient_id)
+        .join(MenuItem, MenuItem.menu_item_id == MenuItemIngredient.menu_item_id)
+        .where(MenuItem.menu_snapshot_id.in_(select(latest)))
+        .distinct()
+    ).all()
     return {
         "categories": sorted(categories),
         "proteins": sorted(proteins),
         "dietary": sorted(dietary),
+        "ingredients": sorted(ingredients),
         "min_price": float(min(prices)) if prices else None,
         "max_price": float(max(prices)) if prices else None,
     }
@@ -194,7 +208,8 @@ def list_menu_items(
     canonical_dish: str | None = None,
     protein: str | None = Query(None, description="Comma-separated proteins"),
     protein_mode: str = Query("any", description="any = overlap, all = must include every protein"),
-    ingredient: str | None = None,
+    ingredient: str | None = Query(None, description="Comma-separated ingredients, matched against canonical names/aliases"),
+    ingredient_mode: str = Query("any", description="any = contains at least one, all = must contain every ingredient"),
     dietary: str | None = Query(None, description="Comma-separated dietary tags"),
     restaurant_id: str | None = None,
     min_price: Decimal | None = None,
@@ -213,6 +228,7 @@ def list_menu_items(
         protein=protein,
         protein_mode=protein_mode,
         ingredient=ingredient,
+        ingredient_mode=ingredient_mode,
         dietary=dietary,
         restaurant_id=restaurant_id,
         min_price=min_price,

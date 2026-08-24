@@ -2,10 +2,29 @@ import statistics
 from dataclasses import dataclass
 from decimal import Decimal
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant
+from app.models import Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+
+
+def ingredient_match_clause(term: str) -> ColumnElement[bool]:
+    """True for a MenuItem linked to any canonical Ingredient whose name or
+    aliases contain `term`. Matches across spelling variants sharing one
+    canonical row ("buffalo" matches an item recorded as "bufala
+    mozzarella"), which a raw-array ILIKE on the item's own text never
+    could — the alias lives on the Ingredient, not on that item.
+    """
+    like = f"%{term.strip().lower()}%"
+    matching_ingredient_ids = select(Ingredient.ingredient_id).where(
+        or_(
+            Ingredient.canonical_name.ilike(like),
+            func.array_to_string(Ingredient.aliases, " ").ilike(like),
+        )
+    )
+    return MenuItem.menu_item_id.in_(
+        select(MenuItemIngredient.menu_item_id).where(MenuItemIngredient.ingredient_id.in_(matching_ingredient_ids))
+    )
 
 
 def latest_snapshot_ids(db: Session) -> Select[tuple[str]]:
