@@ -1,0 +1,59 @@
+def test_list_restaurants_returns_five_active(client):
+    response = client.get("/restaurants")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 5
+    ids = {row["restaurant_id"] for row in body}
+    assert ids == {"NE_0001", "NE_0002", "NE_0003", "NE_0004", "NE_0005"}
+    assert all(row["photo_url"] for row in body)
+
+
+def test_get_restaurant_not_found(client):
+    response = client.get("/restaurants/NE_9999")
+    assert response.status_code == 404
+
+
+def test_get_restaurant_detail_shape(client):
+    response = client.get("/restaurants/NE_0002")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["name"] == "Neptune Oyster"
+    assert body["item_count"] > 0
+
+    # Google Places / BestTime are wired but unconfigured in tests -> null, not fabricated.
+    assert body["rating"] is None
+    assert body["review_count"] is None
+    assert body["weekly_popularity"] is None
+
+    profile = body["price_profile"]
+    assert profile["restaurant_median"] is not None
+    assert profile["north_end_median"] is not None
+    assert any(c["category"] == "seafood" for c in profile["categories"])
+
+    labels = {entry["label"] for entry in body["provenance"]}
+    assert labels == {"Menu", "Categories", "Rating", "Crowd"}
+    by_label = {entry["label"]: entry for entry in body["provenance"]}
+    assert by_label["Menu"]["status"] == "connected"
+    assert by_label["Categories"]["confidence"] is not None
+    assert by_label["Rating"]["status"] == "not_connected"
+    assert by_label["Crowd"]["status"] == "not_connected"
+
+
+def test_price_profile_matches_direct_computation(client, db_session):
+    from app.queries import price_profile
+
+    expected = price_profile(db_session, "NE_0001")
+    response = client.get("/restaurants/NE_0001")
+    body = response.json()["price_profile"]
+
+    assert body["restaurant_median"] == str(expected.restaurant_median)
+    assert body["north_end_median"] == str(expected.north_end_median)
+
+
+def test_modern_pastry_has_no_priced_items(client):
+    # Modern Pastry's prices are honestly null in the seed data (never invented).
+    response = client.get("/restaurants/NE_0004")
+    body = response.json()
+    assert body["price_profile"]["restaurant_median"] is None
+    assert body["price_profile"]["categories"] == []

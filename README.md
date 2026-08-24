@@ -47,6 +47,19 @@ API: [http://localhost:8001/docs](http://localhost:8001/docs) (8001 if 8000 is o
 
 Postgres is on **5433** in docker-compose (to avoid colliding with a local 5432). Homebrew Postgres on 5432 also works — set `DATABASE_URL` accordingly.
 
+## Tests
+
+```bash
+pip install -e "apps/api[dev]"
+pytest
+```
+
+Integration tests run against a real Postgres database (`<your db name>_test`,
+created automatically from `DATABASE_URL`) rather than SQLite — the schema
+leans on Postgres-only features (ARRAY columns, string UUID keys, ILIKE) that
+a SQLite stand-in wouldn't actually exercise. Each test reseeds the five
+restaurants fresh, so it never touches your dev data.
+
 ## What this sprint includes
 
 - `restaurants`, `restaurant_external_ids`, `menu_sources`, `menu_snapshots`, `menu_items`, `canonical_dishes`
