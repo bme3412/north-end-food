@@ -68,10 +68,10 @@ export function SearchWorkspace() {
   const filterCount = activeFilterCount(filters);
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:overflow-hidden">
+    <div className="fixed inset-x-0 bottom-0 top-14 flex flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">
       {/* Sidebar: filters + results */}
       <aside
-        className={`flex min-h-0 flex-col bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${
+        className={`flex min-h-0 flex-col overflow-y-auto bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${
           mobileTab === "list" ? "flex-1" : "hidden lg:flex"
         }`}
       >
@@ -117,7 +117,7 @@ export function SearchWorkspace() {
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="p-4">
           {error ? (
             <p className="rounded-2xl bg-tomato-soft px-4 py-3 text-sm">Can’t reach the API. {error}</p>
           ) : (
