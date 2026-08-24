@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --linen: #f4efe6;
+  --linen-2: #ebe4d6;
+  --card: #fffcf7;
+  --ink: #2a231c;
+  --muted: #6d6156;
+  --line: rgba(42, 35, 28, 0.12);
+  --tomato: #c0392b;
+  --tomato-soft: #f3d4c8;
+  --basil: #3d6b4a;
+  --basil-soft: #d7e4d6;
+}
+
+@theme inline {
+  --color-linen: var(--linen);
+  --color-linen-2: var(--linen-2);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-tomato: var(--tomato);
+  --color-tomato-soft: var(--tomato-soft);
+  --color-basil: var(--basil);
+  --color-basil-soft: var(--basil-soft);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-atkinson);
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--linen);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(1200px 480px at 10% -10%, rgba(192, 57, 43, 0.08), transparent 55%),
+    radial-gradient(900px 400px at 110% 8%, rgba(61, 107, 74, 0.08), transparent 50%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--tomato-soft);
+  color: var(--ink);
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+.sheet-open {
+  overflow: hidden;
+}
+
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib-inner {
+  opacity: 0.55;
+}

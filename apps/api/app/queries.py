@@ -1,0 +1,105 @@
+import statistics
+from dataclasses import dataclass
+from decimal import Decimal
+
+from sqlalchemy import Select, func, select
+from sqlalchemy.orm import Session
+
+from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant
+
+
+def latest_snapshot_ids(db: Session) -> Select[tuple[str]]:
+    ranked = (
+        select(
+            MenuSnapshot.menu_snapshot_id,
+            func.row_number()
+            .over(
+                partition_by=MenuSnapshot.restaurant_id,
+                order_by=MenuSnapshot.retrieved_at.desc(),
+            )
+            .label("rn"),
+        )
+        .where(MenuSnapshot.extraction_status.in_(("complete", "manual_seed")))
+        .subquery()
+    )
+    return select(ranked.c.menu_snapshot_id).where(ranked.c.rn == 1)
+
+
+def item_with_source_query(db: Session) -> Select:
+    latest = latest_snapshot_ids(db).subquery()
+    return (
+        select(MenuItem, MenuSnapshot, MenuSource, Restaurant)
+        .join(MenuSnapshot, MenuItem.menu_snapshot_id == MenuSnapshot.menu_snapshot_id)
+        .join(MenuSource, MenuSnapshot.menu_source_id == MenuSource.menu_source_id)
+        .join(Restaurant, MenuItem.restaurant_id == Restaurant.restaurant_id)
+        .where(MenuItem.menu_snapshot_id.in_(select(latest)))
+    )
+
+
+@dataclass(frozen=True)
+class CategoryMedian:
+    category: str
+    restaurant_median: Decimal | None
+    north_end_median: Decimal | None
+
+
+@dataclass(frozen=True)
+class PriceProfile:
+    restaurant_median: Decimal | None
+    north_end_median: Decimal | None
+    pct_vs_median: float | None
+    categories: list[CategoryMedian]
+
+
+def _median(values: list[Decimal]) -> Decimal | None:
+    if not values:
+        return None
+    return statistics.median(values)
+
+
+def price_profile(db: Session, restaurant_id: str, *, top_categories: int = 3) -> PriceProfile:
+    """Median item price for a restaurant vs. the North End as a whole, priced items only."""
+    latest = latest_snapshot_ids(db).subquery()
+    rows = db.execute(
+        select(MenuItem.restaurant_id, MenuItem.canonical_category, MenuItem.price).where(
+            MenuItem.menu_snapshot_id.in_(select(latest)),
+            MenuItem.price.is_not(None),
+            MenuItem.market_price.is_(False),
+        )
+    ).all()
+
+    restaurant_prices = [price for rid, _cat, price in rows if rid == restaurant_id]
+    north_end_prices = [price for _rid, _cat, price in rows]
+
+    restaurant_median = _median(restaurant_prices)
+    north_end_median = _median(north_end_prices)
+
+    pct_vs_median: float | None = None
+    if restaurant_median is not None and north_end_median:
+        pct_vs_median = float((restaurant_median / north_end_median - 1) * 100)
+
+    restaurant_categories: dict[str, list[Decimal]] = {}
+    north_end_by_category: dict[str, list[Decimal]] = {}
+    for rid, category, price in rows:
+        if not category:
+            continue
+        north_end_by_category.setdefault(category, []).append(price)
+        if rid == restaurant_id:
+            restaurant_categories.setdefault(category, []).append(price)
+
+    ranked = sorted(restaurant_categories.items(), key=lambda pair: len(pair[1]), reverse=True)
+    categories = [
+        CategoryMedian(
+            category=category,
+            restaurant_median=_median(prices),
+            north_end_median=_median(north_end_by_category.get(category, [])),
+        )
+        for category, prices in ranked[:top_categories]
+    ]
+
+    return PriceProfile(
+        restaurant_median=restaurant_median,
+        north_end_median=north_end_median,
+        pct_vs_median=pct_vs_median,
+        categories=categories,
+    )

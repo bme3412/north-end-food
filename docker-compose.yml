@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: northend-postgres
+    environment:
+      POSTGRES_USER: northend
+      POSTGRES_PASSWORD: northend
+      POSTGRES_DB: northend
+    ports:
+      - "5433:5432"
+    volumes:
+      - northend_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U northend -d northend"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  northend_pgdata:
