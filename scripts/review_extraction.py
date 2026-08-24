@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
 from sqlalchemy import select  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
+from app.ingredients import record_menu_item_ingredients  # noqa: E402
 from app.models import MenuItem, MenuSnapshot  # noqa: E402
 from app.pricing import record_price_observations  # noqa: E402
 
@@ -59,9 +60,13 @@ def main() -> None:
 
         if decision == "a":
             snapshot.extraction_status = "complete"
-            written = record_price_observations(db, snapshot)
+            price_written = record_price_observations(db, snapshot)
+            ingredient_written = record_menu_item_ingredients(db, snapshot)
             db.commit()
-            print(f"approved — now live in search. {written} price observation(s) recorded.")
+            print(
+                f"approved — now live in search. {price_written} price observation(s), "
+                f"{ingredient_written} ingredient link(s) recorded."
+            )
         elif decision == "r":
             db.query(MenuItem).filter(MenuItem.menu_snapshot_id == snapshot.menu_snapshot_id).delete()
             snapshot.extraction_status = "pending"

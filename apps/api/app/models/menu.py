@@ -30,6 +30,36 @@ class CanonicalDish(Base):
     aliases: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
 
 
+class Ingredient(Base):
+    """A canonical ingredient concept. ingredient_id is a deterministic slug
+    of its canonical_name (e.g. "roasted red pepper" -> ROASTED_RED_PEPPER),
+    so re-resolving the same raw string always lands on the same row.
+    aliases accumulates every raw spelling/plural seen for this concept
+    ("mushroom", "mushrooms") — grows over time as new menu text is ingested,
+    never shrinks.
+    """
+
+    __tablename__ = "ingredients"
+
+    ingredient_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    canonical_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ingredient_category: Mapped[str | None] = mapped_column(String(64))
+    aliases: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+
+class MenuItemIngredient(Base):
+    """CONTAINS edge between a MenuItem and its canonical Ingredient(s)."""
+
+    __tablename__ = "menu_item_ingredients"
+
+    menu_item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("menu_items.menu_item_id", ondelete="CASCADE"), primary_key=True
+    )
+    ingredient_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("ingredients.ingredient_id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class MenuSource(Base):
     __tablename__ = "menu_sources"
 
