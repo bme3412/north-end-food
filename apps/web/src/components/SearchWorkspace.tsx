@@ -53,13 +53,12 @@ export function SearchWorkspace() {
     return () => window.clearTimeout(handle);
   }, [filters]);
 
-  useEffect(() => {
+  function selectPlace(id: string | null) {
+    setSelectedPlaceId(id);
     setFilters((current) =>
-      current.restaurantId === (selectedPlaceId ?? "")
-        ? current
-        : { ...current, restaurantId: selectedPlaceId ?? "" },
+      current.restaurantId === (id ?? "") ? current : { ...current, restaurantId: id ?? "" },
     );
-  }, [selectedPlaceId]);
+  }
 
   const visibleItems = useMemo(() => {
     if (!selectedPlaceId) return items;
@@ -110,7 +109,7 @@ export function SearchWorkspace() {
             <span>Showing one restaurant</span>
             <button
               type="button"
-              onClick={() => setSelectedPlaceId(null)}
+              onClick={() => selectPlace(null)}
               className="font-medium text-basil underline underline-offset-2"
             >
               Show all
@@ -146,7 +145,7 @@ export function SearchWorkspace() {
           <MapView
             places={places}
             selectedId={selectedPlaceId}
-            onSelect={(place) => setSelectedPlaceId(place?.restaurant_id ?? null)}
+            onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
           />
         </div>
       </section>

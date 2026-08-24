@@ -1,5 +1,7 @@
 # North End Food Graph
 
+[![CI](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml/badge.svg)](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml)
+
 Structured menu intelligence for Boston's North End. Sprint 0 owns the schema, five hand-seeded restaurants, a search API, and a Food Screener. Gemini extraction, Places, busyness, and MCP come later.
 
 ## Quick start
