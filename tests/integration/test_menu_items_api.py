@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pytest
+
 
 def test_free_text_price_query(client):
     response = client.get("/menu-items", params={"q": "lobster ravioli under $35"})
@@ -111,3 +113,35 @@ def test_free_text_search_matches_across_spelling_variants(client):
 def test_menu_item_not_found(client):
     response = client.get("/menu-items/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
+
+
+def test_priced_items_carry_a_north_end_median(client):
+    response = client.get("/menu-items", params={"priced_only": "true"})
+    body = response.json()
+    assert body["total"] >= 1
+    with_median = [item for item in body["items"] if item["canonical_category"] or item["canonical_dish"]]
+    assert with_median
+    for item in with_median:
+        assert item["north_end_median_price"] is not None
+        assert item["pct_vs_median"] is not None
+
+
+def test_pct_vs_median_matches_its_own_price(client):
+    response = client.get("/menu-items", params={"priced_only": "true"})
+    body = response.json()
+    for item in body["items"]:
+        median = item["north_end_median_price"]
+        pct = item["pct_vs_median"]
+        if median is None:
+            assert pct is None
+            continue
+        expected = float((Decimal(item["price"]) / Decimal(median) - 1) * 100)
+        assert pct == pytest.approx(expected, abs=0.01)
+
+
+def test_market_price_items_have_no_pct_vs_median(client):
+    response = client.get("/menu-items")
+    body = response.json()
+    for item in body["items"]:
+        if item["market_price"]:
+            assert item["pct_vs_median"] is None

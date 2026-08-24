@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
-from app.queries import ingredient_match_clause, item_with_source_query, latest_snapshot_ids
+from app.queries import (
+    DishCategoryMedians,
+    dish_and_category_medians,
+    ingredient_match_clause,
+    item_with_source_query,
+    latest_snapshot_ids,
+)
 from app.schemas import MenuItemList, MenuItemOut
 from app.schemas.menu import PlaceMatch
 from app.search import parse_query
@@ -21,7 +27,18 @@ def _split(value: str | None) -> list[str]:
     return [part.strip().lower() for part in value.split(",") if part.strip()]
 
 
-def _to_out(item: MenuItem, snapshot: MenuSnapshot, source: MenuSource, restaurant: Restaurant) -> MenuItemOut:
+def _to_out(
+    item: MenuItem,
+    snapshot: MenuSnapshot,
+    source: MenuSource,
+    restaurant: Restaurant,
+    medians: DishCategoryMedians,
+) -> MenuItemOut:
+    median = medians.median_for(canonical_dish=item.canonical_dish, canonical_category=item.canonical_category)
+    pct_vs_median: float | None = None
+    if median and item.price is not None and not item.market_price:
+        pct_vs_median = float((item.price / median - 1) * 100)
+
     return MenuItemOut(
         menu_item_id=item.menu_item_id,
         restaurant_id=item.restaurant_id,
@@ -47,6 +64,8 @@ def _to_out(item: MenuItem, snapshot: MenuSnapshot, source: MenuSource, restaura
         market_price=item.market_price,
         available=item.available,
         normalization_confidence=item.normalization_confidence,
+        north_end_median_price=median,
+        pct_vs_median=pct_vs_median,
         menu_snapshot_id=item.menu_snapshot_id,
         retrieved_at=snapshot.retrieved_at,
         source_url=source.source_url,
@@ -244,7 +263,8 @@ def list_menu_items(
     else:
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
     rows = db.execute(stmt).all()
-    items = [_to_out(item, snapshot, source, restaurant) for item, snapshot, source, restaurant in rows]
+    medians = dish_and_category_medians(db)
+    items = [_to_out(item, snapshot, source, restaurant, medians) for item, snapshot, source, restaurant in rows]
     return MenuItemList(
         total=len(items),
         items=items,
@@ -266,4 +286,4 @@ def get_menu_item(menu_item_id: str, db: Session = Depends(get_db)) -> MenuItemO
     if row is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
     item, snapshot, source, restaurant = row
-    return _to_out(item, snapshot, source, restaurant)
+    return _to_out(item, snapshot, source, restaurant, dish_and_category_medians(db))

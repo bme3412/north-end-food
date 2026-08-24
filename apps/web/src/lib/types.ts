@@ -92,6 +92,8 @@ export type MenuItem = {
   market_price: boolean;
   available: boolean;
   normalization_confidence: string | null;
+  north_end_median_price: string | null;
+  pct_vs_median: number | null;
   menu_snapshot_id: string;
   retrieved_at: string | null;
   source_url: string | null;

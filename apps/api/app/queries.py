@@ -76,6 +76,50 @@ def _median(values: list[Decimal]) -> Decimal | None:
     return statistics.median(values)
 
 
+@dataclass(frozen=True)
+class DishCategoryMedians:
+    """Stable North End price benchmarks, independent of any search filter —
+    used to show '$21 · 7% below median' on individual result cards, per
+    intent-build-plan.md's own Phase 0 example. Keyed by canonical_dish
+    first (most precise comparison), falling back to canonical_category for
+    items without a dish match.
+    """
+
+    by_dish: dict[str, Decimal]
+    by_category: dict[str, Decimal]
+
+    def median_for(self, *, canonical_dish: str | None, canonical_category: str | None) -> Decimal | None:
+        if canonical_dish and canonical_dish in self.by_dish:
+            return self.by_dish[canonical_dish]
+        if canonical_category:
+            return self.by_category.get(canonical_category)
+        return None
+
+
+def dish_and_category_medians(db: Session) -> DishCategoryMedians:
+    latest = latest_snapshot_ids(db).subquery()
+    rows = db.execute(
+        select(MenuItem.canonical_dish, MenuItem.canonical_category, MenuItem.price).where(
+            MenuItem.menu_snapshot_id.in_(select(latest)),
+            MenuItem.price.is_not(None),
+            MenuItem.market_price.is_(False),
+        )
+    ).all()
+
+    by_dish_prices: dict[str, list[Decimal]] = {}
+    by_category_prices: dict[str, list[Decimal]] = {}
+    for dish, category, price in rows:
+        if dish:
+            by_dish_prices.setdefault(dish, []).append(price)
+        if category:
+            by_category_prices.setdefault(category, []).append(price)
+
+    return DishCategoryMedians(
+        by_dish={key: _median(prices) for key, prices in by_dish_prices.items()},
+        by_category={key: _median(prices) for key, prices in by_category_prices.items()},
+    )
+
+
 def price_profile(db: Session, restaurant_id: str, *, top_categories: int = 3) -> PriceProfile:
     """Median item price for a restaurant vs. the North End as a whole, priced items only."""
     latest = latest_snapshot_ids(db).subquery()

@@ -39,6 +39,14 @@ export function formatPctVsMedian(pct: number | null | undefined): string | null
   return `${rounded}% ${direction} than the North End median overall`;
 }
 
+export function formatItemPctVsMedian(pct: number | null | undefined): string | null {
+  if (pct == null) return null;
+  const rounded = Math.round(Math.abs(pct));
+  if (rounded === 0) return "At median";
+  const direction = pct < 0 ? "below" : "above";
+  return `${rounded}% ${direction} median`;
+}
+
 export function prettyCategory(value: string | null | undefined): string {
   if (!value) return "";
   return value.replaceAll("_", " ");

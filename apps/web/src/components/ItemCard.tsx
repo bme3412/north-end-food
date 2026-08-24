@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatPrice, prettyCategory } from "@/lib/format";
+import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
 export function ItemCard({
@@ -50,6 +50,15 @@ export function ItemCard({
           <span className="text-muted capitalize">{prettyCategory(item.canonical_category)}</span>
         ) : null}
       </div>
+      {item.north_end_median_price != null && item.pct_vs_median != null ? (
+        <p className={`mt-1.5 text-xs text-muted ${compact ? "" : "text-[0.8rem]"}`}>
+          North End median: {formatDollars(item.north_end_median_price)}
+          {" · "}
+          <span className={item.pct_vs_median <= 0 ? "text-basil" : "text-tomato"}>
+            {formatItemPctVsMedian(item.pct_vs_median)}
+          </span>
+        </p>
+      ) : null}
     </article>
   );
 }

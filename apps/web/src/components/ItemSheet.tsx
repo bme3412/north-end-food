@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
-import { formatPrice, prettyCategory, prettyDish } from "@/lib/format";
+import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory, prettyDish } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
 export function ItemSheet({
@@ -44,6 +44,15 @@ export function ItemSheet({
           </h2>
           <p className="shrink-0 text-xl font-bold text-tomato">{formatPrice(item)}</p>
         </div>
+        {item.north_end_median_price != null && item.pct_vs_median != null ? (
+          <p className="mt-1 text-sm text-muted">
+            North End median: {formatDollars(item.north_end_median_price)}
+            {" · "}
+            <span className={item.pct_vs_median <= 0 ? "text-basil" : "text-tomato"}>
+              {formatItemPctVsMedian(item.pct_vs_median)}
+            </span>
+          </p>
+        ) : null}
         <Link
           href={`/restaurants/${item.restaurant_id}`}
           className="mt-2 inline-block text-basil underline decoration-basil/30 underline-offset-4"

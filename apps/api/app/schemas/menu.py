@@ -115,6 +115,8 @@ class MenuItemOut(BaseModel):
     market_price: bool
     available: bool
     normalization_confidence: Decimal | None
+    north_end_median_price: Decimal | None = None
+    pct_vs_median: float | None = None
     menu_snapshot_id: str
     retrieved_at: datetime | None = None
     source_url: str | None = None
