@@ -7,6 +7,7 @@ import { PriceProfileCard } from "@/components/PriceProfileCard";
 import { NotConnectedCard } from "@/components/NotConnectedCard";
 import { PopularityChart } from "@/components/PopularityChart";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
+import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -44,6 +45,14 @@ export default async function RestaurantPage({ params }: PageProps) {
         {restaurant.name}
       </h1>
       <p className="mt-2 text-muted">{restaurant.address}</p>
+      {restaurant.place_summary ? (
+        <p className="mt-2 text-sm leading-relaxed text-ink">
+          {restaurant.place_summary}
+          <span className="ml-1.5 text-xs text-muted">
+            ({restaurant.place_summary_disclosure ?? "Summarized with Gemini"})
+          </span>
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="rounded-full bg-basil-soft px-3 py-1 capitalize text-basil">
@@ -103,6 +112,16 @@ export default async function RestaurantPage({ params }: PageProps) {
             Reservations
           </a>
         ) : null}
+        {restaurant.maps_uri ? (
+          <a
+            href={restaurant.maps_uri}
+            className="rounded-full border border-line px-3 py-1"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Google Maps
+          </a>
+        ) : null}
       </div>
 
       {lastRefreshed ? <p className="mt-3 text-xs text-muted">Last data refresh: {lastRefreshed}</p> : null}
@@ -137,10 +156,15 @@ export default async function RestaurantPage({ params }: PageProps) {
       {/* Google review intelligence */}
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
+        <p className="mt-1 text-xs text-muted">
+          Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
+          doesn&apos;t expose food/service/value/atmosphere separately here).
+        </p>
         <div className="mt-3">
-          <NotConnectedCard
-            title="Not built yet"
-            message="Summarizing reviews by food / service / value / atmosphere / wait needs real Google review text (Places API) plus a Gemini summarization pass — a bigger build than a single API key. Deferred for now rather than shipped with invented sentiment."
+          <ReviewSummaryCard
+            summary={restaurant.review_summary}
+            disclosure={restaurant.review_summary_disclosure}
+            reviewsUri={restaurant.reviews_uri}
           />
         </div>
       </div>

@@ -26,6 +26,18 @@ class RestaurantPlaceStats(Base):
     price_level: Mapped[int | None] = mapped_column(Integer)
     open_now: Mapped[bool | None] = mapped_column(Boolean)
     hours_summary: Mapped[str | None] = mapped_column(Text)
+    maps_uri: Mapped[str | None] = mapped_column(String(1024))
+
+    # AI-generated summaries Places API (New) returns directly — each MUST
+    # be shown with its own disclosure text per Google's attribution terms,
+    # so we store the exact localized string they return rather than
+    # hardcoding "Summarized with Gemini" ourselves.
+    place_summary: Mapped[str | None] = mapped_column(Text)
+    place_summary_disclosure: Mapped[str | None] = mapped_column(Text)
+    review_summary: Mapped[str | None] = mapped_column(Text)
+    review_summary_disclosure: Mapped[str | None] = mapped_column(Text)
+    reviews_uri: Mapped[str | None] = mapped_column(String(1024))
+
     source: Mapped[str] = mapped_column(String(32), default="google_places", nullable=False)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

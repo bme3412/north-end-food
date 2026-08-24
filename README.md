@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml/badge.svg)](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml)
 
-Structured menu intelligence for Boston's North End. Sprint 0 owns the schema, five hand-seeded restaurants, a search API, and a Food Screener. Gemini extraction, Places, busyness, and MCP come later.
+Structured menu intelligence for Boston's North End. Sprint 0 owns the schema, five hand-seeded restaurants, a search API, and a Food Screener. Gemini extraction, Google Places, and BestTime are wired up but inert until their API keys are configured; MCP comes later.
 
 ## Quick start
 
@@ -67,7 +67,9 @@ restaurants fresh, so it never touches your dev data.
 - `restaurants`, `restaurant_external_ids`, `menu_sources`, `menu_snapshots`, `menu_items`, `canonical_dishes`
 - Seed set: Giacomo's, Neptune Oyster, Pizzeria Regina, Modern Pastry, Bricco
 - `GET /restaurants`, `GET /restaurants/{id}`, `GET /menu-items?q=`
-- `scripts/ingest_menu.py` — fetch, hash, snapshot; skip if unchanged; **no extraction**
+- `scripts/ingest_menu.py` — fetch, hash, snapshot; skip if unchanged (no extraction on its own)
+- `scripts/extract_menu.py` / `scripts/review_extraction.py` — Gemini extraction with a human-approval gate before results go live
+- `scripts/link_google_places.py` / `scripts/refresh_place_stats.py` / `scripts/refresh_busyness.py` — Places (New) + BestTime enrichment, wired but inert without API keys
 - Food Screener with raw vs canonical fields and provenance
 
 ## Ingest a URL without extracting
@@ -77,6 +79,45 @@ python scripts/ingest_menu.py NE_0002 https://www.neptuneoyster.com/menu
 ```
 
 Re-running with the same content prints `unchanged` and does not insert a snapshot.
+
+## Extract a pending snapshot into menu items
+
+Requires `GEMINI_API_KEY` in `.env` (wired but inert without one — the
+scripts below print a message and exit cleanly if it's unset).
+
+```bash
+python scripts/extract_menu.py NE_0002     # writes items, status -> needs_review
+python scripts/review_extraction.py NE_0002  # inspect, then approve or reject
+```
+
+Extracted items are written immediately but stay invisible to the search
+API (`extraction_status="needs_review"`) until approved — an LLM extraction
+error should never reach the live menu graph unreviewed. Approving sets
+`extraction_status="complete"` and stamps the real Gemini model name as
+`extractor_model`, which is what the restaurant page's data-provenance
+panel displays. The extractor is instructed to never invent a price or
+dish that isn't literally in the source text — missing prices come back
+null, same as the hand-seeded data.
+
+## Refresh rating, hours, and review summaries
+
+Requires `GOOGLE_MAPS_API_KEY` in `.env`, and (for the weekly popularity
+chart / wait estimate) `BESTTIME_API_KEY`. Both are wired but inert without
+a key — the scripts below print a message and exit cleanly if theirs is unset.
+
+```bash
+python scripts/link_google_places.py     # Text Search -> restaurant_external_ids (once)
+python scripts/refresh_place_stats.py    # rating, price, hours, AI place/review summaries
+python scripts/refresh_busyness.py       # wait estimate + weekly pattern
+```
+
+`refresh_place_stats.py` uses the current Places API's `generativeSummary`
+and `reviewSummary` fields — Google runs its own Gemini summarization over
+real reviews server-side, so the restaurant page's review-intelligence
+section doesn't need a separate scrape-then-summarize pipeline. It's a
+single narrative per place, not a food/service/value/atmosphere breakdown,
+and isn't guaranteed for every place. Every AI-generated summary shown in
+the UI carries Google's exact disclosure text, not a hardcoded one.
 
 ## Honest seed caveats
 

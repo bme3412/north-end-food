@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Refresh Google Places stats (rating, price level, hours) for seeded restaurants.
+"""Refresh Google Places stats (rating, price, hours, AI-generated place
+and review summaries) for seeded restaurants.
 
 Requires a `restaurant_external_ids` row with provider="google_places" per
-restaurant (not seeded yet — add one before running). No-ops with a clear
-message if GOOGLE_MAPS_API_KEY isn't set.
+restaurant — run scripts/link_google_places.py first to populate those.
+No-ops with a clear message if GOOGLE_MAPS_API_KEY isn't set.
 """
 
 from __future__ import annotations
@@ -55,6 +56,12 @@ def main() -> None:
             stats.price_level = details.price_level
             stats.open_now = details.open_now
             stats.hours_summary = details.hours_summary
+            stats.maps_uri = details.maps_uri
+            stats.place_summary = details.place_summary
+            stats.place_summary_disclosure = details.place_summary_disclosure
+            stats.review_summary = details.review_summary
+            stats.review_summary_disclosure = details.review_summary_disclosure
+            stats.reviews_uri = details.reviews_uri
             stats.retrieved_at = now
             print(f"updated {restaurant.restaurant_id}: rating={details.rating} reviews={details.review_count}")
 

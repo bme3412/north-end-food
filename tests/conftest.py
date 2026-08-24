@@ -42,6 +42,10 @@ def engine():
         pytest.skip(f"Postgres not reachable for tests ({exc}); start it and rerun.")
 
     test_engine = create_engine(test_url, pool_pre_ping=True)
+    # drop_all + create_all rather than create_all alone: create_all only adds
+    # missing tables, it won't add a column a model gained since the test db
+    # was last created, so a stale schema from a prior run goes undetected.
+    Base.metadata.drop_all(test_engine)
     Base.metadata.create_all(test_engine)
     yield test_engine
     test_engine.dispose()

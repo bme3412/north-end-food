@@ -46,7 +46,14 @@ export type RestaurantDetail = RestaurantSummary & {
   price_level: number | null;
   open_now: boolean | null;
   hours_summary: string | null;
+  maps_uri: string | null;
   ratings_updated_at: string | null;
+
+  place_summary: string | null;
+  place_summary_disclosure: string | null;
+  review_summary: string | null;
+  review_summary_disclosure: string | null;
+  reviews_uri: string | null;
 
   wait_minutes: number | null;
   weekly_popularity: number[] | null;

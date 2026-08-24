@@ -64,7 +64,16 @@ class RestaurantDetail(RestaurantSummary):
     price_level: int | None = None
     open_now: bool | None = None
     hours_summary: str | None = None
+    maps_uri: str | None = None
     ratings_updated_at: datetime | None = None
+
+    # AI-generated summaries from Places API (New) — each must be shown
+    # with its own disclosure text per Google's attribution requirement.
+    place_summary: str | None = None
+    place_summary_disclosure: str | None = None
+    review_summary: str | None = None
+    review_summary_disclosure: str | None = None
+    reviews_uri: str | None = None
 
     # BestTime — null until BESTTIME_API_KEY is configured and refreshed.
     wait_minutes: int | None = None

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     google_maps_api_key: str | None = None
     besttime_api_key: str | None = None
     gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
 
     model_config = SettingsConfigDict(
         env_file=REPO_ROOT / ".env",
