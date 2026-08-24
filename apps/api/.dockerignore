@@ -1,0 +1,5 @@
+__pycache__
+*.pyc
+.pytest_cache
+north_end_food_api.egg-info
+.venv
