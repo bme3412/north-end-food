@@ -3,10 +3,12 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { DishGroupCard } from "@/components/DishGroupCard";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ItemCard } from "@/components/ItemCard";
 import { ItemSheet } from "@/components/ItemSheet";
 import { getFilterMeta, listMenuItems } from "@/lib/api";
+import { groupItemsByDish } from "@/lib/dishGroups";
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -29,6 +31,7 @@ export function SearchWorkspace() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [groupByDish, setGroupByDish] = useState(true);
   const [mobileTab, setMobileTab] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +69,7 @@ export function SearchWorkspace() {
   }, [items, selectedPlaceId]);
 
   const filterCount = activeFilterCount(filters);
+  const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-14 flex flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">
@@ -104,6 +108,11 @@ export function SearchWorkspace() {
           ) : null}
         </div>
 
+        <div className="flex items-center gap-1 border-b border-line px-4 py-2">
+          <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="By dish" />
+          <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="All items" />
+        </div>
+
         {selectedPlaceId ? (
           <div className="flex items-center justify-between gap-2 border-b border-line bg-basil-soft/40 px-4 py-2 text-sm">
             <span>Showing one restaurant</span>
@@ -122,9 +131,22 @@ export function SearchWorkspace() {
             <p className="rounded-2xl bg-tomato-soft px-4 py-3 text-sm">Can’t reach the API. {error}</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {visibleItems.map((item) => (
-                <ItemCard key={item.menu_item_id} item={item} onOpen={setSelectedItem} compact />
-              ))}
+              {groupByDish
+                ? grouped.map((group) =>
+                    group.restaurantCount >= 2 ? (
+                      <DishGroupCard key={group.key} group={group} onOpen={setSelectedItem} />
+                    ) : (
+                      <ItemCard
+                        key={group.items[0].menu_item_id}
+                        item={group.items[0]}
+                        onOpen={setSelectedItem}
+                        compact
+                      />
+                    ),
+                  )
+                : visibleItems.map((item) => (
+                    <ItemCard key={item.menu_item_id} item={item} onOpen={setSelectedItem} compact />
+                  ))}
               {!loading && visibleItems.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
                   No dishes matched. Widen the search or clear filters.
@@ -162,6 +184,28 @@ export function SearchWorkspace() {
 
       <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
     </div>
+  );
+}
+
+function ViewModeButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+        active ? "bg-ink text-linen" : "text-muted"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 import { prettyCategory } from "@/lib/format";
 import type { FilterState } from "@/lib/filters";
@@ -36,12 +37,24 @@ export function FilterPanel({
     onChange({ ...filters, [key]: value });
   };
 
-  const toggleInList = (key: "categories" | "dietary", value: string) => {
+  const toggleInList = (key: "categories" | "protein" | "dietary", value: string) => {
     const current = filters[key];
     const next = current.includes(value)
       ? current.filter((item) => item !== value)
       : [...current, value];
     set(key, next);
+  };
+
+  const addIngredient = (value: string) => {
+    if (filters.ingredients.includes(value)) return;
+    set("ingredients", [...filters.ingredients, value]);
+  };
+
+  const removeIngredient = (value: string) => {
+    set(
+      "ingredients",
+      filters.ingredients.filter((item) => item !== value),
+    );
   };
 
   return (
@@ -93,23 +106,12 @@ export function FilterPanel({
         <div className="mt-4 space-y-4 border-t border-line pt-4">
           {meta?.categories.length ? (
             <Field label="Category">
-              <div className="flex flex-wrap gap-2">
-                {meta.categories.map((category) => {
-                  const active = filters.categories.includes(category);
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => toggleInList("categories", category)}
-                      className={`rounded-full px-3 py-1.5 text-sm capitalize ${
-                        active ? "bg-ink text-linen" : "border border-line bg-linen"
-                      }`}
-                    >
-                      {prettyCategory(category)}
-                    </button>
-                  );
-                })}
-              </div>
+              <ChipGrid
+                options={meta.categories}
+                selected={filters.categories}
+                onToggle={(value) => toggleInList("categories", value)}
+                labelFor={prettyCategory}
+              />
             </Field>
           ) : null}
 
@@ -134,59 +136,34 @@ export function FilterPanel({
             </Field>
           </div>
 
-          <Field label="Protein (comma-separated)">
-            <input
-              value={filters.protein}
-              onChange={(event) => set("protein", event.target.value)}
-              placeholder="lobster, shrimp"
-              className="h-10 w-full rounded-xl border border-line bg-linen px-3"
-            />
-            {filters.protein.trim() ? (
-              <div className="mt-2 flex gap-2">
-                {(["any", "all"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => set("proteinMode", mode)}
-                    className={`rounded-full px-3 py-1 text-xs ${
-                      filters.proteinMode === mode ? "bg-basil text-linen" : "bg-linen-2"
-                    }`}
-                  >
-                    Match {mode}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </Field>
+          {meta?.proteins.length ? (
+            <Field label="Protein">
+              <ChipGrid
+                options={meta.proteins}
+                selected={filters.protein}
+                onToggle={(value) => toggleInList("protein", value)}
+              />
+              {filters.protein.length > 1 ? (
+                <MatchModeToggle mode={filters.proteinMode} onChange={(mode) => set("proteinMode", mode)} />
+              ) : null}
+            </Field>
+          ) : null}
 
-          <Field label="Ingredient contains">
-            <input
-              value={filters.ingredient}
-              onChange={(event) => set("ingredient", event.target.value)}
-              placeholder="truffle, basil…"
-              className="h-10 w-full rounded-xl border border-line bg-linen px-3"
+          <Field label="Ingredient">
+            <IngredientPicker
+              options={meta?.ingredients ?? []}
+              selected={filters.ingredients}
+              onAdd={addIngredient}
+              onRemove={removeIngredient}
             />
+            {filters.ingredients.length > 1 ? (
+              <MatchModeToggle mode={filters.ingredientMode} onChange={(mode) => set("ingredientMode", mode)} />
+            ) : null}
           </Field>
 
           {meta?.dietary.length ? (
             <Field label="Dietary">
-              <div className="flex flex-wrap gap-2">
-                {meta.dietary.map((tag) => {
-                  const active = filters.dietary.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleInList("dietary", tag)}
-                      className={`rounded-full px-3 py-1.5 text-sm capitalize ${
-                        active ? "bg-basil text-linen" : "border border-line bg-linen"
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
+              <ChipGrid options={meta.dietary} selected={filters.dietary} onToggle={(value) => toggleInList("dietary", value)} />
             </Field>
           ) : null}
 
@@ -231,6 +208,123 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     <div>
       <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
       {children}
+    </div>
+  );
+}
+
+function ChipGrid({
+  options,
+  selected,
+  onToggle,
+  labelFor,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  labelFor?: (value: string) => string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = selected.includes(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onToggle(option)}
+            className={`rounded-full px-3 py-1.5 text-sm capitalize ${
+              active ? "bg-ink text-linen" : "border border-line bg-linen"
+            }`}
+          >
+            {labelFor ? labelFor(option) : option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MatchModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: "any" | "all";
+  onChange: (mode: "any" | "all") => void;
+}) {
+  return (
+    <div className="mt-2 flex gap-2">
+      {(["any", "all"] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onChange(value)}
+          className={`rounded-full px-3 py-1 text-xs ${mode === value ? "bg-basil text-linen" : "bg-linen-2"}`}
+        >
+          Match {value}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function IngredientPicker({
+  options,
+  selected,
+  onAdd,
+  onRemove,
+}: {
+  options: string[];
+  selected: string[];
+  onAdd: (value: string) => void;
+  onRemove: (value: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return options.filter((name) => name.toLowerCase().includes(q) && !selected.includes(name)).slice(0, 8);
+  }, [query, options, selected]);
+
+  return (
+    <div>
+      {selected.length ? (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {selected.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => onRemove(name)}
+              className="rounded-full bg-basil px-3 py-1.5 text-sm text-linen"
+            >
+              {name} ×
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search ingredients (truffle, basil…)"
+        className="h-10 w-full rounded-xl border border-line bg-linen px-3"
+      />
+      {matches.length ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {matches.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => {
+                onAdd(name);
+                setQuery("");
+              }}
+              className="rounded-full border border-line bg-linen px-3 py-1.5 text-sm"
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
