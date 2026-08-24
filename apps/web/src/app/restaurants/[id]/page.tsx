@@ -174,12 +174,31 @@ export default async function RestaurantPage({ params }: PageProps) {
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
         {restaurant.weekly_popularity ? (
-          <p className="mt-1 text-xs text-muted">
-            Typical busyness by day of week — a historical pattern from BestTime&apos;s aggregated foot-traffic
-            data, not a live reading. The &quot;{formatBusynessPercent(restaurant.busyness_percent)}&quot; badge up
-            top is the separate real-time number.
-            {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
-          </p>
+          <>
+            {restaurant.busiest_day || restaurant.quietest_day || restaurant.peak_hours_text ? (
+              <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                {restaurant.busiest_day ? (
+                  <span className="rounded-full bg-tomato-soft px-3 py-1 text-tomato">
+                    Busiest {restaurant.busiest_day}
+                  </span>
+                ) : null}
+                {restaurant.quietest_day ? (
+                  <span className="rounded-full bg-basil-soft px-3 py-1 text-basil">
+                    Quietest {restaurant.quietest_day}
+                  </span>
+                ) : null}
+                {restaurant.peak_hours_text ? (
+                  <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
+                ) : null}
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-muted">
+              Typical busyness by day of week — a historical pattern from BestTime&apos;s aggregated foot-traffic
+              data, not a live reading. The &quot;{formatBusynessPercent(restaurant.busyness_percent)}&quot; badge up
+              top is the separate real-time number.
+              {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
+            </p>
+          </>
         ) : null}
         <div className="mt-3 rounded-3xl border border-line bg-card p-5">
           {restaurant.weekly_popularity ? (

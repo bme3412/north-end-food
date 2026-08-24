@@ -80,6 +80,9 @@ class RestaurantDetail(RestaurantSummary):
     weekly_popularity: list[float] | None = None
     crowd_updated_at: datetime | None = None
     weekly_popularity_updated_at: datetime | None = None
+    busiest_day: str | None = None
+    quietest_day: str | None = None
+    peak_hours_text: str | None = None
 
     price_profile: PriceProfileOut
     provenance: list[ProvenanceEntry] = Field(default_factory=list)

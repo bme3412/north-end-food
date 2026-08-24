@@ -65,6 +65,13 @@ class RestaurantBusynessStats(Base):
     # TTL rather than refetched every time busyness_percent refreshes.
     weekly_pattern: Mapped[list[float] | None] = mapped_column(ARRAY(Numeric(3, 2)))
     weekly_pattern_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Derived from the same New Forecast response above — day_rank_mean for
+    # busiest/quietest, hour_analysis intensity for the peak window. No
+    # extra API cost, just more of what we already fetch.
+    busiest_day: Mapped[str | None] = mapped_column(String(16))
+    quietest_day: Mapped[str | None] = mapped_column(String(16))
+    peak_hours_text: Mapped[str | None] = mapped_column(String(32))
     source: Mapped[str] = mapped_column(String(32), default="besttime", nullable=False)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

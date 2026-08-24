@@ -2,6 +2,8 @@
 """Refresh BestTime crowd data for seeded restaurants: current busyness
 (Live Forecast, hourly-fresh) and the typical weekly pattern (New Forecast,
 a heavier call refreshed far less often — each has its own staleness clock).
+The weekly fetch also derives busiest/quietest day and a peak-hours window
+from fields already in that response, at no extra API cost.
 
 Keys venues by name + address. No-ops with a clear message if
 BESTTIME_API_KEY isn't set.
@@ -81,15 +83,21 @@ def main() -> None:
                 print(f"skip {restaurant.restaurant_id} (weekly): fresh (refreshed {age_days}d ago)")
                 weekly_skipped += 1
             else:
-                weekly = besttime.fetch_week_forecast(restaurant.name, restaurant.address)
-                if weekly is None:
+                week = besttime.fetch_week_forecast(restaurant.name, restaurant.address)
+                if week is None:
                     print(f"skip {restaurant.restaurant_id} (weekly): no result from BestTime")
                 else:
-                    stats.weekly_pattern = weekly
+                    stats.weekly_pattern = week.daily_pattern
                     stats.weekly_pattern_retrieved_at = now
+                    stats.busiest_day = week.busiest_day
+                    stats.quietest_day = week.quietest_day
+                    stats.peak_hours_text = week.peak_hours_text
                     db.commit()
                     weekly_refreshed += 1
-                    print(f"updated {restaurant.restaurant_id} (weekly): {weekly}")
+                    print(
+                        f"updated {restaurant.restaurant_id} (weekly): busiest={week.busiest_day} "
+                        f"quietest={week.quietest_day} peak={week.peak_hours_text}"
+                    )
                     time.sleep(REQUEST_SLEEP_SECONDS)
 
         print(

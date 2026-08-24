@@ -59,6 +59,9 @@ export type RestaurantDetail = RestaurantSummary & {
   weekly_popularity: number[] | null;
   crowd_updated_at: string | null;
   weekly_popularity_updated_at: string | null;
+  busiest_day: string | null;
+  quietest_day: string | null;
+  peak_hours_text: string | null;
 
   price_profile: PriceProfile;
   provenance: ProvenanceEntry[];
