@@ -172,18 +172,20 @@ function SelectedPlaceCard({
             ✕
           </button>
         </div>
-        <p className="mt-3 text-sm">
-          <span className="font-bold text-tomato">
-            {place.match_count} match{place.match_count === 1 ? "" : "es"}
-          </span>
-          {place.lowest_price != null ? (
-            <span className="text-muted">
-              {" "}
-              · from {formatPrice({ price: place.lowest_price, market_price: false })}
+        {place.lowest_price != null ? (
+          <p className="mt-3 text-sm">
+            <span className="font-bold text-tomato">
+              {formatPrice({ price: place.lowest_price, market_price: false })}
             </span>
-          ) : null}
-        </p>
-        <p className="mt-1 text-sm text-muted line-clamp-2">{place.sample_name}</p>
+            <span className="text-muted"> and up</span>
+          </p>
+        ) : null}
+        {place.sample_name ? (
+          <p className="mt-1 text-sm text-muted line-clamp-2">
+            <span className="text-ink">Try: </span>
+            {place.sample_name}
+          </p>
+        ) : null}
       </div>
     </div>
   );
