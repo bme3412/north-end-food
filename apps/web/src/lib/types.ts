@@ -118,6 +118,8 @@ export type PlaceMatch = {
   lowest_price: string | null;
   sample_name: string;
   photo_url: string | null;
+  open_now: boolean | null;
+  hours_summary: string | null;
 };
 
 export type MenuItemList = {

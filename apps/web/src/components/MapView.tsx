@@ -52,6 +52,15 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
       {mappable.map((place) => {
         const active = place.restaurant_id === selectedId;
         const size = active ? 44 : 32 + Math.min(place.match_count, 4) * 4;
+        // Color encodes open/closed status (from live-computed hours, see
+        // app/hours.py) rather than match count -- a raw item-count digit
+        // on every pin didn't tell anyone anything actionable. Selection
+        // still overrides to tomato so the active pin stays unambiguous.
+        const statusColor = active
+          ? "border-ink bg-tomato"
+          : place.open_now === false
+            ? "border-card bg-muted"
+            : "border-card bg-basil";
         return (
           <Marker
             key={place.restaurant_id}
@@ -65,15 +74,18 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
           >
             <button
               type="button"
-              aria-label={`${place.name}, ${place.match_count} matches`}
-              className={`flex items-center justify-center rounded-full border-2 font-bold shadow-md transition-transform ${
-                active
-                  ? "scale-110 border-ink bg-tomato text-linen"
-                  : "border-card bg-basil text-linen hover:scale-105"
+              aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
+                place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
               }`}
-              style={{ width: size, height: size, fontSize: active ? 14 : 12 }}
+              className={`flex items-center justify-center rounded-full border-2 text-linen shadow-md transition-transform ${statusColor} ${
+                active ? "scale-110" : "hover:scale-105"
+              }`}
+              style={{ width: size, height: size }}
             >
-              {place.match_count}
+              <span
+                className={`rounded-full bg-linen ${active ? "size-2" : "size-1.5"}`}
+                aria-hidden="true"
+              />
             </button>
           </Marker>
         );
@@ -107,13 +119,25 @@ function SelectedPlaceCard({
               className="h-12 w-12 shrink-0 rounded-xl object-cover"
             />
             <div className="min-w-0">
-              <Link
-                href={`/restaurants/${place.restaurant_id}`}
-                className="font-[family-name:var(--font-fraunces)] text-lg font-medium leading-tight hover:underline"
-              >
-                {place.name}
-              </Link>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Link
+                  href={`/restaurants/${place.restaurant_id}`}
+                  className="font-[family-name:var(--font-fraunces)] text-lg font-medium leading-tight hover:underline"
+                >
+                  {place.name}
+                </Link>
+                {place.open_now != null ? (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${
+                      place.open_now ? "bg-basil-soft text-basil" : "bg-muted/15 text-muted"
+                    }`}
+                  >
+                    {place.open_now ? "Open now" : "Closed"}
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-1 text-xs text-muted">{place.address}</p>
+              {place.hours_summary ? <p className="mt-0.5 text-xs text-muted">{place.hours_summary}</p> : null}
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-sm text-muted hover:bg-linen">

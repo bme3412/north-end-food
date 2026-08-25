@@ -143,6 +143,8 @@ class PlaceMatch(BaseModel):
     lowest_price: Decimal | None
     sample_name: str
     photo_url: str | None = None
+    open_now: bool | None = None
+    hours_summary: str | None = None
 
 
 class MenuItemList(BaseModel):

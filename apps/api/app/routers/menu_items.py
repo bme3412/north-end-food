@@ -193,6 +193,8 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
                 lowest_price=min(priced) if priced else None,
                 sample_name=min(group, key=lambda item: (item.price is None, item.price or 0)).raw_name,
                 photo_url=first.photo_url,
+                open_now=first.open_now,
+                hours_summary=first.hours_summary,
             )
         )
     places.sort(key=lambda place: (-place.match_count, place.name))

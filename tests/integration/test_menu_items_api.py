@@ -128,6 +128,16 @@ def test_free_text_search_matches_across_spelling_variants(client):
     assert body["total"] >= 1
 
 
+def test_places_carry_open_now_and_hours_summary(client):
+    response = client.get("/menu-items", params={"restaurant_id": "NE_0002"})
+    body = response.json()
+    place = body["places"][0]
+    assert place["open_now"] is not None
+    assert place["hours_summary"]
+    # Every item at a restaurant shares that restaurant's open/closed status.
+    assert all(item["open_now"] == place["open_now"] for item in body["items"])
+
+
 def test_open_now_filter_partitions_results_by_computed_status(client):
     # Deliberately doesn't assert *which* restaurants are open -- that's
     # time-dependent (the whole point of app/hours.is_open_now) and would
