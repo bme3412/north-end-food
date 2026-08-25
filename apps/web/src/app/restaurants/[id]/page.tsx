@@ -150,17 +150,9 @@ export default async function RestaurantPage({ params }: PageProps) {
       {/* Popularity / demand */}
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
-        {restaurant.busiest_day || restaurant.quietest_day || restaurant.peak_hours_text ? (
+        {restaurant.peak_hours_text ? (
           <div className="mt-2 flex flex-wrap gap-2 text-sm">
-            {restaurant.busiest_day ? (
-              <span className="rounded-full bg-tomato-soft px-3 py-1 text-tomato">Busiest {restaurant.busiest_day}</span>
-            ) : null}
-            {restaurant.quietest_day ? (
-              <span className="rounded-full bg-basil-soft px-3 py-1 text-basil">Quietest {restaurant.quietest_day}</span>
-            ) : null}
-            {restaurant.peak_hours_text ? (
-              <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
-            ) : null}
+            <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
           </div>
         ) : null}
         {restaurant.hourly_popularity ? (
@@ -175,7 +167,7 @@ export default async function RestaurantPage({ params }: PageProps) {
           ) : restaurant.weekly_popularity ? (
             <NotConnectedCard
               title="Hour-by-hour not available yet"
-              message="We have this restaurant's daily pattern (see the badges above) but not the hourly breakdown yet — see Data sources below for details."
+              message="We have this restaurant's daily pattern but not the hourly breakdown yet — see Data sources below for details."
             />
           ) : restaurant.busyness_percent != null ? (
             <NotConnectedCard
