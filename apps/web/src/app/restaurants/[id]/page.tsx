@@ -165,7 +165,7 @@ export default async function RestaurantPage({ params }: PageProps) {
         ) : null}
         {restaurant.hourly_popularity ? (
           <p className="mt-2 text-xs text-muted">
-            Hour-by-hour, historical pattern from BestTime&apos;s foot-traffic data, not a live reading.
+            Hour-by-hour, historical pattern from Google&apos;s Popular Times data, not a live reading.
             {weeklyUpdated ? ` Last updated ${weeklyUpdated}.` : ""}
           </p>
         ) : null}

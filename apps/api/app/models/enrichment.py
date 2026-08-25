@@ -45,9 +45,10 @@ class RestaurantPlaceStats(Base):
 
 
 class RestaurantBusynessStats(Base):
-    """Latest BestTime snapshot for a restaurant. One row per restaurant, refreshed in place.
+    """Latest Google Popular Times snapshot for a restaurant (via SerpApi's
+    Google Maps Place Results API). One row per restaurant, refreshed in place.
 
-    Empty (no row) until BESTTIME_API_KEY is configured and scripts/refresh_busyness.py runs.
+    Empty (no row) until SERPAPI_KEY is configured and scripts/refresh_busyness.py runs.
     """
 
     __tablename__ = "restaurant_busyness_stats"
@@ -55,31 +56,39 @@ class RestaurantBusynessStats(Base):
     restaurant_id: Mapped[str] = mapped_column(
         String(16), ForeignKey("restaurants.restaurant_id", ondelete="CASCADE"), primary_key=True
     )
-    # 0-100 forecasted busyness for the current hour (BestTime's Live
-    # Forecast) — real-time-ish, refreshed hourly.
+    # 0-100 live busyness for the current hour, when Google has one --
+    # sourced from the single hour entry in the day's graph that carries
+    # `current: true` in SerpApi's response. Refreshed alongside everything
+    # else below since one SerpApi call returns it all together (unlike
+    # BestTime's old split between a cheap live call and a heavier weekly
+    # one, there's no separate cheap endpoint here).
     busyness_percent: Mapped[int | None] = mapped_column(Integer)
 
-    # 7 values Mon..Sun, 0-1 normalized day_mean from BestTime's New Forecast
-    # (typical/historical busyness, not real-time) — a heavier call than Live
-    # Forecast, so it's tracked with its own retrieved_at and a much longer
-    # TTL rather than refetched every time busyness_percent refreshes.
+    # 7 values Mon..Sun, 0-1 normalized mean of each day's hourly readings
+    # (typical/historical busyness, not real-time) from the same SerpApi
+    # response as busyness_percent above.
     weekly_pattern: Mapped[list[float] | None] = mapped_column(ARRAY(Numeric(3, 2)))
     weekly_pattern_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    # 7 (Mon..Sun) x 24 (hour 0-23) grid, 0-1 normalized intensity or null
-    # for hours the venue is closed / BestTime has no reading for. Same New
-    # Forecast response as weekly_pattern above (hour_analysis per day) —
+    # 7 (Mon..Sun) x 24 (hour 0-23) grid, 0-1 normalized busyness_score or
+    # null for hours the venue is closed / Google has no reading for. Same
+    # SerpApi response as weekly_pattern above (graph_results per day) —
     # no extra API cost, just keeping more of what's already fetched
-    # instead of collapsing it straight to a single day_mean.
+    # instead of collapsing it straight to a single day mean.
     hourly_pattern: Mapped[list[list[float | None]] | None] = mapped_column(JSONB)
 
-    # Derived from the same New Forecast response above — day_rank_mean for
-    # busiest/quietest, hour_analysis intensity for the peak window. No
+    # Human-readable dwell-time estimate SerpApi/Google provides alongside
+    # popular times (e.g. "People typically spend 1-4 hours here") -- new
+    # data BestTime never had. Captured but not yet surfaced in the UI.
+    typical_time_spent: Mapped[str | None] = mapped_column(Text)
+
+    # Derived from the same SerpApi response above -- daily_pattern for
+    # busiest/quietest, that day's hourly readings for the peak window. No
     # extra API cost, just more of what we already fetch.
     busiest_day: Mapped[str | None] = mapped_column(String(16))
     quietest_day: Mapped[str | None] = mapped_column(String(16))
     peak_hours_text: Mapped[str | None] = mapped_column(String(32))
-    source: Mapped[str] = mapped_column(String(32), default="besttime", nullable=False)
+    source: Mapped[str] = mapped_column(String(32), default="serpapi", nullable=False)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     restaurant: Mapped[Restaurant] = relationship("Restaurant", back_populates="busyness_stats")

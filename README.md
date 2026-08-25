@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml/badge.svg)](https://github.com/bme3412/north-end-food/actions/workflows/ci.yml)
 
-Structured menu intelligence for Boston's North End. Sprint 0 owns the schema, five hand-seeded restaurants, a search API, and a Food Screener. Gemini extraction, Google Places, and BestTime are wired up but inert until their API keys are configured; MCP comes later.
+Structured menu intelligence for Boston's North End. Sprint 0 owns the schema, five hand-seeded restaurants, a search API, and a Food Screener. Gemini extraction, Google Places, and SerpApi (Google Popular Times) are wired up but inert until their API keys are configured; MCP comes later.
 
 ## Quick start
 
@@ -69,7 +69,7 @@ restaurants fresh, so it never touches your dev data.
 - `GET /restaurants`, `GET /restaurants/{id}`, `GET /menu-items?q=`
 - `scripts/ingest_menu.py` — fetch, hash, snapshot; skip if unchanged (no extraction on its own)
 - `scripts/extract_menu.py` / `scripts/review_extraction.py` — Gemini extraction with a human-approval gate before results go live
-- `scripts/link_google_places.py` / `scripts/refresh_place_stats.py` / `scripts/refresh_busyness.py` — Places (New) + BestTime enrichment, wired but inert without API keys
+- `scripts/link_google_places.py` / `scripts/refresh_place_stats.py` / `scripts/refresh_busyness.py` — Places (New) + SerpApi (Google Popular Times) enrichment, wired but inert without API keys
 - Food Screener with raw vs canonical fields and provenance
 
 ## Ingest a URL without extracting
@@ -101,14 +101,14 @@ null, same as the hand-seeded data.
 
 ## Refresh rating, hours, and review summaries
 
-Requires `GOOGLE_MAPS_API_KEY` in `.env`, and (for current busyness)
-`BESTTIME_API_KEY`. Both are wired but inert without a key — the scripts
-below print a message and exit cleanly if theirs is unset.
+Requires `GOOGLE_MAPS_API_KEY` in `.env`, and (for crowd data) `SERPAPI_KEY`
+(get one at serpapi.com). Both are wired but inert without a key — the
+scripts below print a message and exit cleanly if theirs is unset.
 
 ```bash
 python scripts/link_google_places.py     # Text Search -> restaurant_external_ids (once)
 python scripts/refresh_place_stats.py    # rating, price, hours, AI place/review summaries
-python scripts/refresh_busyness.py       # current busyness percent
+python scripts/refresh_busyness.py       # live busyness, weekly pattern, hour-by-hour heatmap
 ```
 
 `refresh_place_stats.py` uses the current Places API's `generativeSummary`
@@ -119,17 +119,18 @@ single narrative per place, not a food/service/value/atmosphere breakdown,
 and isn't guaranteed for every place. Every AI-generated summary shown in
 the UI carries Google's exact disclosure text, not a hardcoded one.
 
-`refresh_busyness.py` uses BestTime's Live Forecast endpoint, which returns
-a 0-100 busyness percentage for the *current hour* only — there's no
-wait-minutes field and no 7-day array in that response, so the "Popularity
-this week" chart stays an honest empty state until a separate (unimplemented)
-BestTime week-forecast endpoint is wired up.
+`refresh_busyness.py` uses SerpApi's Google Maps Place Results API to pull
+Google's own Popular Times data: one call per restaurant returns the
+current live busyness (when Google has a reading), the typical weekly
+pattern, and the full hour-by-hour breakdown together — all rendered on the
+restaurant page as the "Popularity this week" heatmap. SerpApi's free tier
+is 250 searches/month; at 30 restaurants the default `--max-age-hours`
+(168h/weekly) keeps this to ~130 calls/month, comfortably inside the free
+tier. Pass `--force` to refetch regardless of freshness.
 
 Both refresh scripts cache in Postgres and skip restaurants refreshed
-within `--max-age-hours` (default 24h for Places, 1h for BestTime, since
-crowd data is time-sensitive) — nothing calls Google or BestTime on a page
-load, only when you explicitly run these scripts. Pass `--force` to
-refetch regardless of freshness.
+within `--max-age-hours` — nothing calls Google or SerpApi on a page load,
+only when you explicitly run these scripts.
 
 ## Honest seed caveats
 

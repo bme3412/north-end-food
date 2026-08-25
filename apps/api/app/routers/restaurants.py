@@ -140,11 +140,11 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> Restaur
     provenance.append(
         ProvenanceEntry(
             label="Crowd",
-            source="BestTime",
+            source="SerpApi",
             status="connected" if busyness_stats and busyness_stats.retrieved_at else "not_connected",
             detail=_time_ago(busyness_stats.retrieved_at)
             if busyness_stats and busyness_stats.retrieved_at
-            else "Add BESTTIME_API_KEY and run scripts/refresh_busyness.py",
+            else "Add SERPAPI_KEY and run scripts/refresh_busyness.py",
         )
     )
 

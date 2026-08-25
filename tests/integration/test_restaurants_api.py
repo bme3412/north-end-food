@@ -40,7 +40,7 @@ def test_get_restaurant_detail_shape(client):
     assert body["name"] == "Neptune Oyster"
     assert body["item_count"] > 0
 
-    # Google Places / BestTime are wired but unconfigured in tests -> null, not fabricated.
+    # Google Places / SerpApi are wired but unconfigured in tests -> null, not fabricated.
     assert body["rating"] is None
     assert body["review_count"] is None
     assert body["weekly_popularity"] is None

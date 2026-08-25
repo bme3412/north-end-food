@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     raw_menu_dir: Path = REPO_ROOT / "data" / "raw_menus"
 
     google_maps_api_key: str | None = None
-    besttime_api_key: str | None = None
+    serpapi_key: str | None = None
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
 

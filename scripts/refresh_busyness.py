@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Refresh BestTime crowd data for seeded restaurants: current busyness
-(Live Forecast, hourly-fresh) and the typical weekly pattern (New Forecast,
-a heavier call refreshed far less often — each has its own staleness clock).
-The weekly fetch also derives busiest/quietest day and a peak-hours window
-from fields already in that response, at no extra API cost.
+"""Refresh crowd data (Google Popular Times, via SerpApi's Google Maps Place
+Results API) for seeded restaurants: current busyness, the typical weekly
+pattern, hour-by-hour breakdown, and a typical-time-spent estimate -- all
+from a single call per restaurant (unlike the old BestTime integration,
+which split this across a cheap live call and a heavier weekly one; SerpApi
+has no such split, one call returns everything).
 
-Keys venues by name + address. No-ops with a clear message if
-BESTTIME_API_KEY isn't set.
+Requires a `restaurant_external_ids` row with provider="google_places" per
+restaurant -- run scripts/link_google_places.py first to populate those.
+No-ops with a clear message if SERPAPI_KEY isn't set.
+
+Skips restaurants refreshed within --max-age-hours (default 168h/7d, chosen
+to stay comfortably inside SerpApi's 250-searches/month free tier at 30
+restaurants: ~130 calls/month) so accidentally running this twice in a row
+doesn't burn quota for nothing. Pass --force to refresh regardless.
 """
 
 from __future__ import annotations
@@ -22,9 +29,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
 from sqlalchemy import select  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
-from app.integrations import besttime  # noqa: E402
+from app.integrations import serpapi  # noqa: E402
 from app.integrations.cache import is_fresh  # noqa: E402
-from app.models import Restaurant, RestaurantBusynessStats  # noqa: E402
+from app.models import Restaurant, RestaurantBusynessStats, RestaurantExternalId  # noqa: E402
 
 REQUEST_SLEEP_SECONDS = 0.5
 
@@ -32,79 +39,66 @@ REQUEST_SLEEP_SECONDS = 0.5
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--max-age-hours", type=float, default=1.0, help="skip current-busyness refresh within this many hours (default 1h)"
+        "--max-age-hours", type=float, default=24 * 7, help="skip restaurants refreshed more recently than this (default 168h/7d)"
     )
-    parser.add_argument(
-        "--weekly-max-age-hours",
-        type=float,
-        default=24 * 7,
-        help="skip weekly-pattern refresh within this many hours (default 168h/7d — it's a heavier call and changes far less)",
-    )
-    parser.add_argument("--force", action="store_true", help="refresh everything regardless of freshness")
+    parser.add_argument("--force", action="store_true", help="refresh every restaurant regardless of freshness")
     args = parser.parse_args()
 
-    if not besttime.is_configured():
-        print("BESTTIME_API_KEY not set — nothing to refresh.")
+    if not serpapi.is_configured():
+        print("SERPAPI_KEY not set — nothing to refresh.")
         return
 
     db = SessionLocal()
     try:
-        restaurants = list(db.scalars(select(Restaurant).where(Restaurant.active.is_(True))))
-        now = datetime.now(timezone.utc)
-        live_refreshed = live_skipped = weekly_refreshed = weekly_skipped = 0
+        rows = db.execute(
+            select(Restaurant, RestaurantExternalId)
+            .join(RestaurantExternalId, RestaurantExternalId.restaurant_id == Restaurant.restaurant_id)
+            .where(RestaurantExternalId.provider == "google_places")
+        ).all()
 
-        for restaurant in restaurants:
+        if not rows:
+            print("No restaurants have a google_places external id yet — nothing to refresh.")
+            return
+
+        now = datetime.now(timezone.utc)
+        refreshed = skipped = 0
+
+        for restaurant, external_id in rows:
             stats = db.get(RestaurantBusynessStats, restaurant.restaurant_id)
+
+            if not args.force and stats is not None and is_fresh(stats.retrieved_at, args.max_age_hours):
+                age_hr = round((now - stats.retrieved_at).total_seconds() / 3600, 1)
+                print(f"skip {restaurant.restaurant_id}: fresh (refreshed {age_hr}h ago, use --force to refetch)")
+                skipped += 1
+                continue
+
+            result = serpapi.fetch_popular_times(external_id.external_id)
+            if result is None:
+                print(f"skip {restaurant.restaurant_id}: no result from SerpApi")
+                continue
+
             if stats is None:
                 stats = RestaurantBusynessStats(restaurant_id=restaurant.restaurant_id)
                 db.add(stats)
-                db.flush()
 
-            # Current busyness — cheap, refreshed hourly.
-            if not args.force and is_fresh(stats.retrieved_at, args.max_age_hours):
-                age_min = int((now - stats.retrieved_at).total_seconds() / 60)
-                print(f"skip {restaurant.restaurant_id} (live): fresh (refreshed {age_min}m ago)")
-                live_skipped += 1
-            else:
-                forecast = besttime.fetch_live_forecast(restaurant.name, restaurant.address)
-                if forecast is None:
-                    print(f"skip {restaurant.restaurant_id} (live): no result from BestTime")
-                else:
-                    stats.busyness_percent = forecast.busyness_percent
-                    stats.retrieved_at = now
-                    db.commit()
-                    live_refreshed += 1
-                    print(f"updated {restaurant.restaurant_id} (live): busyness={forecast.busyness_percent}%")
-                    time.sleep(REQUEST_SLEEP_SECONDS)
+            stats.busyness_percent = result.live_busyness_percent
+            stats.weekly_pattern = result.daily_pattern
+            stats.hourly_pattern = result.hourly_pattern
+            stats.typical_time_spent = result.typical_time_spent
+            stats.busiest_day = result.busiest_day
+            stats.quietest_day = result.quietest_day
+            stats.peak_hours_text = result.peak_hours_text
+            stats.retrieved_at = now
+            stats.weekly_pattern_retrieved_at = now
+            db.commit()
+            refreshed += 1
+            print(
+                f"updated {restaurant.restaurant_id}: live={result.live_busyness_percent}% "
+                f"busiest={result.busiest_day} quietest={result.quietest_day} peak={result.peak_hours_text}"
+            )
+            time.sleep(REQUEST_SLEEP_SECONDS)
 
-            # Weekly pattern — heavier call, refreshed weekly by default.
-            if not args.force and is_fresh(stats.weekly_pattern_retrieved_at, args.weekly_max_age_hours):
-                age_days = round((now - stats.weekly_pattern_retrieved_at).total_seconds() / 86400, 1)
-                print(f"skip {restaurant.restaurant_id} (weekly): fresh (refreshed {age_days}d ago)")
-                weekly_skipped += 1
-            else:
-                week = besttime.fetch_week_forecast(restaurant.name, restaurant.address)
-                if week is None:
-                    print(f"skip {restaurant.restaurant_id} (weekly): no result from BestTime")
-                else:
-                    stats.weekly_pattern = week.daily_pattern
-                    stats.hourly_pattern = week.hourly_pattern
-                    stats.weekly_pattern_retrieved_at = now
-                    stats.busiest_day = week.busiest_day
-                    stats.quietest_day = week.quietest_day
-                    stats.peak_hours_text = week.peak_hours_text
-                    db.commit()
-                    weekly_refreshed += 1
-                    print(
-                        f"updated {restaurant.restaurant_id} (weekly): busiest={week.busiest_day} "
-                        f"quietest={week.quietest_day} peak={week.peak_hours_text}"
-                    )
-                    time.sleep(REQUEST_SLEEP_SECONDS)
-
-        print(
-            f"\nlive: {live_refreshed} refreshed, {live_skipped} skipped (fresh) | "
-            f"weekly: {weekly_refreshed} refreshed, {weekly_skipped} skipped (fresh)"
-        )
+        print(f"\n{refreshed} refreshed, {skipped} skipped (fresh)")
     finally:
         db.close()
 

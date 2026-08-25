@@ -1,7 +1,7 @@
-"""Staleness check for cached third-party data (Places, BestTime).
+"""Staleness check for cached third-party data (Places, SerpApi).
 
 Both integrations write into DB tables with a `retrieved_at` timestamp and
-are read from there on every request — nothing calls Google or BestTime
+are read from there on every request — nothing calls Google or SerpApi
 live from the request path. This just decides whether an existing row is
 fresh enough for a refresh script to skip refetching it, so accidentally
 running a refresh script twice in a row doesn't burn API quota for nothing.

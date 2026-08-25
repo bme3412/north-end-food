@@ -23,7 +23,7 @@ services:
         value: https://north-end-food.vercel.app
       - key: GOOGLE_MAPS_API_KEY
         sync: false
-      - key: BESTTIME_API_KEY
+      - key: SERPAPI_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false

@@ -77,7 +77,7 @@ class RestaurantDetail(RestaurantSummary):
     review_summary_disclosure: str | None = None
     reviews_uri: str | None = None
 
-    # BestTime — null until BESTTIME_API_KEY is configured and refreshed.
+    # SerpApi (Google Popular Times) — null until SERPAPI_KEY is configured and refreshed.
     busyness_percent: int | None = None
     weekly_popularity: list[float] | None = None
     hourly_popularity: list[list[float | None]] | None = None
