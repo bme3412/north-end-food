@@ -164,6 +164,24 @@ export function SearchWorkspace() {
         }`}
       >
         <div className="relative min-h-[42vh] flex-1 lg:min-h-0">
+          {/* The filter sidebar (and its "Open now" checkbox) is hidden
+              while the mobile Map tab is active, so this is the only way
+              to reach that toggle without switching to the Dishes tab
+              first -- floats on the map itself, desktop already has the
+              sidebar control visible alongside the map. */}
+          <button
+            type="button"
+            onClick={() => setFilters((current) => ({ ...current, openNow: !current.openNow }))}
+            className={`absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-md lg:hidden ${
+              filters.openNow ? "border-basil bg-basil text-linen" : "border-line bg-card/95 text-ink backdrop-blur-sm"
+            }`}
+          >
+            <span
+              className={`size-1.5 rounded-full ${filters.openNow ? "bg-linen" : "bg-basil"}`}
+              aria-hidden="true"
+            />
+            Open now
+          </button>
           <MapView
             places={places}
             selectedId={selectedPlaceId}
