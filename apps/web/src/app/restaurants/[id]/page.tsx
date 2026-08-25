@@ -26,7 +26,7 @@ export default async function RestaurantPage({ params }: PageProps) {
     sections.set(key, list);
   }
 
-  const hasLiveDetails = restaurant.rating != null;
+  const hasRating = restaurant.rating != null;
   const lastRefreshed = formatDate(restaurant.last_verified_at);
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
@@ -64,7 +64,23 @@ export default async function RestaurantPage({ params }: PageProps) {
         </span>
         <span className="rounded-full bg-linen-2 px-3 py-1">{menu.total} dishes</span>
 
-        {hasLiveDetails ? (
+        {/* open_now/hours_summary come from our own curated Restaurant.hours
+            (app/hours.py), computed live -- independent of whether Google
+            Places has ever been connected for this restaurant. Previously
+            this whole row was gated on `rating != null`, so a restaurant
+            with real hours data but no Places rating (every restaurant,
+            currently) showed "not connected" even though hours were known. */}
+        {restaurant.open_now != null ? (
+          <span
+            className={`rounded-full px-3 py-1 ${
+              restaurant.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
+            }`}
+          >
+            {restaurant.open_now ? "Open now" : "Closed now"}
+          </span>
+        ) : null}
+
+        {hasRating ? (
           <>
             <span className="rounded-full bg-linen-2 px-3 py-1">
               ★ {restaurant.rating} ({restaurant.review_count ?? 0})
@@ -72,25 +88,19 @@ export default async function RestaurantPage({ params }: PageProps) {
             {restaurant.price_level != null ? (
               <span className="rounded-full bg-linen-2 px-3 py-1">{formatPriceLevel(restaurant.price_level)}</span>
             ) : null}
-            {restaurant.open_now != null ? (
-              <span
-                className={`rounded-full px-3 py-1 ${
-                  restaurant.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
-                }`}
-              >
-                {restaurant.open_now ? "Open now" : "Closed now"}
-              </span>
-            ) : null}
             {restaurant.busyness_percent != null ? (
               <span className="rounded-full bg-linen-2 px-3 py-1">{formatBusynessPercent(restaurant.busyness_percent)}</span>
             ) : null}
           </>
-        ) : (
+        ) : null}
+
+        {restaurant.open_now == null && !hasRating ? (
           <span className="rounded-full bg-linen-2 px-3 py-1 text-muted">
-            Rating &amp; hours not connected — see data sources below
+            Rating not connected — see data sources below
           </span>
-        )}
+        ) : null}
       </div>
+      {restaurant.hours_summary ? <p className="mt-2 text-sm text-muted">{restaurant.hours_summary}</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-2 text-sm">
         {restaurant.official_website ? (
@@ -206,12 +216,12 @@ export default async function RestaurantPage({ params }: PageProps) {
           ) : restaurant.busyness_percent != null ? (
             <NotConnectedCard
               title={formatBusynessPercent(restaurant.busyness_percent)}
-              message="That's the current-hour reading from BestTime's Live Forecast. The full Mon-Sun pattern comes from a separate, heavier BestTime call (New Forecast) that hasn't run for this restaurant yet — run scripts/refresh_busyness.py."
+              message="That's the current-hour reading. The full Mon-Sun weekly pattern isn't available for this restaurant yet — see Data sources below for details."
             />
           ) : (
             <NotConnectedCard
-              title="Crowd data needs an API key"
-              message="Add BESTTIME_API_KEY to apps/api's .env and run scripts/refresh_busyness.py to populate current busyness and the weekly pattern."
+              title="Crowd data not available yet"
+              message="We don't have foot-traffic data for this restaurant yet. See Data sources below for details."
             />
           )}
         </div>

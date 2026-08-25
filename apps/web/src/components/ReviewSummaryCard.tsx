@@ -13,7 +13,7 @@ export function ReviewSummaryCard({
     return (
       <NotConnectedCard
         title="No review summary yet"
-        message="Google's Places API generates this directly (reviewSummary) once GOOGLE_MAPS_API_KEY is set and scripts/refresh_place_stats.py has run — it isn't guaranteed for every place, so this can stay empty even once connected."
+        message="We don't have an AI-generated review summary for this restaurant yet. See Data sources below for details."
       />
     );
   }
