@@ -217,8 +217,10 @@ export default async function RestaurantPage({ params }: PageProps) {
             ) : null}
             <p className="mt-2 text-xs text-muted">
               Typical busyness by day of week — a historical pattern from BestTime&apos;s aggregated foot-traffic
-              data, not a live reading. The &quot;{formatBusynessPercent(restaurant.busyness_percent)}&quot; badge up
-              top is the separate real-time number.
+              data, not a live reading.
+              {restaurant.busyness_percent != null
+                ? ` The "${formatBusynessPercent(restaurant.busyness_percent)}" badge up top is the separate real-time number.`
+                : ""}
               {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
             </p>
           </>
