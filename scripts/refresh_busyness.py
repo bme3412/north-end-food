@@ -88,6 +88,7 @@ def main() -> None:
                     print(f"skip {restaurant.restaurant_id} (weekly): no result from BestTime")
                 else:
                     stats.weekly_pattern = week.daily_pattern
+                    stats.hourly_pattern = week.hourly_pattern
                     stats.weekly_pattern_retrieved_at = now
                     stats.busiest_day = week.busiest_day
                     stats.quietest_day = week.quietest_day

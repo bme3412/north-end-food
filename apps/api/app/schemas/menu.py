@@ -80,6 +80,7 @@ class RestaurantDetail(RestaurantSummary):
     # BestTime — null until BESTTIME_API_KEY is configured and refreshed.
     busyness_percent: int | None = None
     weekly_popularity: list[float] | None = None
+    hourly_popularity: list[list[float | None]] | None = None
     crowd_updated_at: datetime | None = None
     weekly_popularity_updated_at: datetime | None = None
     busiest_day: str | None = None

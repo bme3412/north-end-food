@@ -188,6 +188,7 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> Restaur
         reviews_uri=place_stats.reviews_uri if place_stats else None,
         busyness_percent=busyness_stats.busyness_percent if busyness_stats else None,
         weekly_popularity=[float(v) for v in busyness_stats.weekly_pattern] if busyness_stats and busyness_stats.weekly_pattern else None,
+        hourly_popularity=busyness_stats.hourly_pattern if busyness_stats else None,
         crowd_updated_at=busyness_stats.retrieved_at if busyness_stats else None,
         weekly_popularity_updated_at=busyness_stats.weekly_pattern_retrieved_at if busyness_stats else None,
         busiest_day=busyness_stats.busiest_day if busyness_stats else None,

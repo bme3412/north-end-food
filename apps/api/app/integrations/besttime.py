@@ -47,6 +47,7 @@ class BusynessForecast:
 @dataclass(frozen=True)
 class WeekForecast:
     daily_pattern: list[float]  # 7 values Mon..Sun, 0-1 normalized day_mean
+    hourly_pattern: list[list[float | None]]  # 7 (Mon..Sun) x 24 (hour 0-23), 0-1 or None if closed/no data
     busiest_day: str | None  # e.g. "Saturday"
     quietest_day: str | None  # e.g. "Monday"
     peak_hours_text: str | None  # e.g. "6-9 PM", the busiest day's peak intensity window
@@ -103,6 +104,24 @@ def _peak_hours_text(day: dict) -> str | None:
     return f"{_hour_label(start)}-{_hour_label(end)}"
 
 
+def _hourly_row(day: dict) -> list[float | None]:
+    """24-length Mon..Sun row from a day's hour_analysis, hour as the index.
+
+    intensity_nr is BestTime's -2..2 relative scale; normalized to 0-1 here
+    so it plots on the same axis as daily_pattern above. 999 (closed) and
+    any hour BestTime didn't return become None, not 0 — a genuinely quiet
+    open hour and "no data" aren't the same thing.
+    """
+    row: list[float | None] = [None] * 24
+    for hour in day.get("hour_analysis") or []:
+        intensity = hour.get("intensity_nr")
+        h = hour.get("hour")
+        if intensity in (None, 999) or h is None or not (0 <= h <= 23):
+            continue
+        row[h] = round(max(0.0, min(1.0, (intensity + 2) / 4)), 2)
+    return row
+
+
 def fetch_week_forecast(venue_name: str, venue_address: str) -> WeekForecast | None:
     if not is_configured():
         return None
@@ -127,6 +146,7 @@ def fetch_week_forecast(venue_name: str, venue_address: str) -> WeekForecast | N
         return None
 
     daily_pattern = [round(max(0.0, min(1.0, day["day_info"]["day_mean"] / 100)), 2) for day in days]
+    hourly_pattern = [_hourly_row(day) for day in days]
 
     ranks = [day["day_info"]["day_rank_mean"] for day in days]
     busiest = days[ranks.index(min(ranks))]
@@ -134,6 +154,7 @@ def fetch_week_forecast(venue_name: str, venue_address: str) -> WeekForecast | N
 
     return WeekForecast(
         daily_pattern=daily_pattern,
+        hourly_pattern=hourly_pattern,
         busiest_day=busiest["day_info"].get("day_text"),
         quietest_day=quietest["day_info"].get("day_text"),
         peak_hours_text=_peak_hours_text(busiest),

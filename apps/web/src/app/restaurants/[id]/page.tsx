@@ -6,6 +6,7 @@ import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { PriceProfileCard } from "@/components/PriceProfileCard";
 import { NotConnectedCard } from "@/components/NotConnectedCard";
 import { PopularityChart } from "@/components/PopularityChart";
+import { HourlyHeatmap } from "@/components/HourlyHeatmap";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
 import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
 
@@ -192,6 +193,14 @@ export default async function RestaurantPage({ params }: PageProps) {
             />
           )}
         </div>
+        {restaurant.hourly_popularity ? (
+          <div className="mt-3 rounded-3xl border border-line bg-card p-5">
+            <p className="text-xs text-muted">Hour-by-hour, across the week</p>
+            <div className="mt-3">
+              <HourlyHeatmap hourly={restaurant.hourly_popularity} />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Price profile */}

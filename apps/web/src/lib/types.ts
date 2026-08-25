@@ -57,6 +57,7 @@ export type RestaurantDetail = RestaurantSummary & {
 
   busyness_percent: number | null;
   weekly_popularity: number[] | null;
+  hourly_popularity: (number | null)[][] | null;
   crowd_updated_at: string | null;
   weekly_popularity_updated_at: string | null;
   busiest_day: string | null;

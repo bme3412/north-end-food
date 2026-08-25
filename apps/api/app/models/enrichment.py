@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -65,6 +65,13 @@ class RestaurantBusynessStats(Base):
     # TTL rather than refetched every time busyness_percent refreshes.
     weekly_pattern: Mapped[list[float] | None] = mapped_column(ARRAY(Numeric(3, 2)))
     weekly_pattern_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # 7 (Mon..Sun) x 24 (hour 0-23) grid, 0-1 normalized intensity or null
+    # for hours the venue is closed / BestTime has no reading for. Same New
+    # Forecast response as weekly_pattern above (hour_analysis per day) —
+    # no extra API cost, just keeping more of what's already fetched
+    # instead of collapsing it straight to a single day_mean.
+    hourly_pattern: Mapped[list[list[float | None]] | None] = mapped_column(JSONB)
 
     # Derived from the same New Forecast response above — day_rank_mean for
     # busiest/quietest, hour_analysis intensity for the peak window. No
