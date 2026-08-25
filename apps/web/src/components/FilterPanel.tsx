@@ -37,7 +37,7 @@ export function FilterPanel({
     onChange({ ...filters, [key]: value });
   };
 
-  const toggleInList = (key: "categories" | "subcategories" | "protein" | "dietary", value: string) => {
+  const toggleInList = (key: "categories" | "dietary", value: string) => {
     const current = filters[key];
     const next = current.includes(value)
       ? current.filter((item) => item !== value)
@@ -45,17 +45,18 @@ export function FilterPanel({
     set(key, next);
   };
 
-  const addIngredient = (value: string) => {
-    if (filters.ingredients.includes(value)) return;
-    set("ingredients", [...filters.ingredients, value]);
-  };
-
-  const removeIngredient = (value: string) => {
-    set(
-      "ingredients",
-      filters.ingredients.filter((item) => item !== value),
-    );
-  };
+  const pickerFor = (key: "subcategories" | "protein" | "ingredients") => ({
+    onAdd: (value: string) => {
+      if (filters[key].includes(value)) return;
+      set(key, [...filters[key], value]);
+    },
+    onRemove: (value: string) => {
+      set(
+        key,
+        filters[key].filter((item) => item !== value),
+      );
+    },
+  });
 
   return (
     <div className="border-b border-line bg-card/80 p-4 backdrop-blur-sm">
@@ -117,11 +118,12 @@ export function FilterPanel({
 
           {meta?.subcategories.length ? (
             <Field label="Style">
-              <ChipGrid
+              <SearchPicker
                 options={meta.subcategories}
                 selected={filters.subcategories}
-                onToggle={(value) => toggleInList("subcategories", value)}
+                placeholder="Search styles (stuffed, raw bar…)"
                 labelFor={prettyCategory}
+                {...pickerFor("subcategories")}
               />
             </Field>
           ) : null}
@@ -149,10 +151,11 @@ export function FilterPanel({
 
           {meta?.proteins.length ? (
             <Field label="Protein">
-              <ChipGrid
+              <SearchPicker
                 options={meta.proteins}
                 selected={filters.protein}
-                onToggle={(value) => toggleInList("protein", value)}
+                placeholder="Search proteins (lobster, chicken…)"
+                {...pickerFor("protein")}
               />
               {filters.protein.length > 1 ? (
                 <MatchModeToggle mode={filters.proteinMode} onChange={(mode) => set("proteinMode", mode)} />
@@ -161,11 +164,11 @@ export function FilterPanel({
           ) : null}
 
           <Field label="Ingredient">
-            <IngredientPicker
+            <SearchPicker
               options={meta?.ingredients ?? []}
               selected={filters.ingredients}
-              onAdd={addIngredient}
-              onRemove={removeIngredient}
+              placeholder="Search ingredients (truffle, basil…)"
+              {...pickerFor("ingredients")}
             />
             {filters.ingredients.length > 1 ? (
               <MatchModeToggle mode={filters.ingredientMode} onChange={(mode) => set("ingredientMode", mode)} />
@@ -279,29 +282,35 @@ function MatchModeToggle({
   );
 }
 
-function IngredientPicker({
+function SearchPicker({
   options,
   selected,
   onAdd,
   onRemove,
+  placeholder,
+  labelFor,
 }: {
   options: string[];
   selected: string[];
   onAdd: (value: string) => void;
   onRemove: (value: string) => void;
+  placeholder: string;
+  labelFor?: (value: string) => string;
 }) {
   const [query, setQuery] = useState("");
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return options.filter((name) => name.toLowerCase().includes(q) && !selected.includes(name)).slice(0, 8);
-  }, [query, options, selected]);
+    return options
+      .filter((name) => (labelFor ? labelFor(name) : name).toLowerCase().includes(q) && !selected.includes(name))
+      .slice(0, 8);
+  }, [query, options, selected, labelFor]);
 
   return (
     <div>
       {selected.length ? (
-        <div className="mb-2 flex flex-wrap gap-2">
+        <div className="mb-2 flex flex-wrap gap-2 capitalize">
           {selected.map((name) => (
             <button
               key={name}
@@ -309,7 +318,7 @@ function IngredientPicker({
               onClick={() => onRemove(name)}
               className="rounded-full bg-basil px-3 py-1.5 text-sm text-linen"
             >
-              {name} ×
+              {labelFor ? labelFor(name) : name} ×
             </button>
           ))}
         </div>
@@ -317,11 +326,11 @@ function IngredientPicker({
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search ingredients (truffle, basil…)"
+        placeholder={placeholder}
         className="h-10 w-full rounded-xl border border-line bg-linen px-3"
       />
       {matches.length ? (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-2 capitalize">
           {matches.map((name) => (
             <button
               key={name}
@@ -332,7 +341,7 @@ function IngredientPicker({
               }}
               className="rounded-full border border-line bg-linen px-3 py-1.5 text-sm"
             >
-              {name}
+              {labelFor ? labelFor(name) : name}
             </button>
           ))}
         </div>
