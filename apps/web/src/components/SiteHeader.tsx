@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { LiveClock } from "@/components/LiveClock";
+
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 h-14 border-b border-line bg-linen/90 backdrop-blur-md">
@@ -10,14 +12,17 @@ export function SiteHeader() {
           </p>
           <p className="mt-1 text-[0.7rem] leading-none text-muted">Search menus on the map</p>
         </Link>
-        <nav className="flex shrink-0 items-center gap-1">
-          <Link href="/" className="rounded-full px-3 py-2 text-sm text-ink hover:bg-linen-2">
-            Map
-          </Link>
-          <Link href="/restaurants" className="rounded-full px-3 py-2 text-sm text-ink hover:bg-linen-2">
-            Places
-          </Link>
-        </nav>
+        <div className="flex shrink-0 items-center gap-2">
+          <LiveClock />
+          <nav className="flex shrink-0 items-center gap-1">
+            <Link href="/" className="rounded-full px-3 py-2 text-sm text-ink hover:bg-linen-2">
+              Map
+            </Link>
+            <Link href="/restaurants" className="rounded-full px-3 py-2 text-sm text-ink hover:bg-linen-2">
+              Places
+            </Link>
+          </nav>
+        </div>
       </div>
     </header>
   );

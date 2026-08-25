@@ -53,12 +53,23 @@ export function ItemSheet({
             </span>
           </p>
         ) : null}
-        <Link
-          href={`/restaurants/${item.restaurant_id}`}
-          className="mt-2 inline-block text-basil underline decoration-basil/30 underline-offset-4"
-        >
-          {item.restaurant_name}
-        </Link>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Link
+            href={`/restaurants/${item.restaurant_id}`}
+            className="text-basil underline decoration-basil/30 underline-offset-4"
+          >
+            {item.restaurant_name}
+          </Link>
+          {item.open_now != null ? (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide ${
+                item.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
+              }`}
+            >
+              {item.open_now ? "Open now" : "Closed"}
+            </span>
+          ) : null}
+        </div>
         {item.raw_description ? (
           <p className="mt-4 text-[1.05rem] leading-relaxed text-ink">{item.raw_description}</p>
         ) : null}
@@ -72,6 +83,7 @@ export function ItemSheet({
           <Fact label="Pasta" value={item.pasta_type ?? "—"} />
           <Fact label="Sauce" value={item.sauce ?? "—"} />
           <Fact label="Source" value={item.source_badge} />
+          <Fact label="Hours" value={item.hours_summary ?? "—"} />
           <Fact
             label="Extraction confidence"
             value={item.normalization_confidence != null ? `${Math.round(Number(item.normalization_confidence) * 100)}%` : "—"}

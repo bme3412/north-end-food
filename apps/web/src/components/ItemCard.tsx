@@ -57,6 +57,16 @@ export function ItemCard({
         {item.canonical_category ? (
           <span className="text-muted capitalize">{prettyCategory(item.canonical_category)}</span>
         ) : null}
+        {item.open_now != null ? (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide ${
+              item.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
+            }`}
+            title={item.hours_summary ?? undefined}
+          >
+            {item.open_now ? "Open now" : "Closed"}
+          </span>
+        ) : null}
         {isLowConfidence(item.normalization_confidence) ? (
           <span
             className="rounded-full bg-linen-2 px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-muted"

@@ -1,17 +1,38 @@
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.hours import format_hours_summary, is_open_now
 from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant
 from app.queries import latest_snapshot_ids, price_profile
 from app.schemas import RestaurantDetail, RestaurantExternalIdOut, RestaurantSummary
 from app.schemas.menu import CategoryMedianOut, PriceProfileOut, ProvenanceEntry
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
+
+
+def _to_summary(restaurant: Restaurant) -> RestaurantSummary:
+    return RestaurantSummary(
+        restaurant_id=restaurant.restaurant_id,
+        name=restaurant.name,
+        slug=restaurant.slug,
+        address=restaurant.address,
+        latitude=restaurant.latitude,
+        longitude=restaurant.longitude,
+        neighborhood=restaurant.neighborhood,
+        establishment_type=restaurant.establishment_type,
+        primary_cuisine=restaurant.primary_cuisine,
+        official_website=restaurant.official_website,
+        official_menu_url=restaurant.official_menu_url,
+        photo_url=restaurant.photo_url,
+        active=restaurant.active,
+        open_now=is_open_now(restaurant.hours),
+        hours_summary=format_hours_summary(restaurant.hours),
+    )
 
 
 def _time_ago(moment: datetime | None) -> str | None:
@@ -33,8 +54,15 @@ def _time_ago(moment: datetime | None) -> str | None:
 
 
 @router.get("", response_model=list[RestaurantSummary])
-def list_restaurants(db: Session = Depends(get_db)) -> list[Restaurant]:
-    return list(db.scalars(select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)))
+def list_restaurants(
+    open_now: bool | None = Query(None, description="If true, only restaurants open right now (America/New_York)"),
+    db: Session = Depends(get_db),
+) -> list[RestaurantSummary]:
+    restaurants = list(db.scalars(select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)))
+    summaries = [_to_summary(restaurant) for restaurant in restaurants]
+    if open_now is not None:
+        summaries = [summary for summary in summaries if summary.open_now == open_now]
+    return summaries
 
 
 @router.get("/{restaurant_id}", response_model=RestaurantDetail)
@@ -122,6 +150,9 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> Restaur
 
     profile = price_profile(db, restaurant_id)
 
+    computed_open_now = is_open_now(restaurant.hours)
+    computed_hours_summary = format_hours_summary(restaurant.hours)
+
     return RestaurantDetail(
         restaurant_id=restaurant.restaurant_id,
         name=restaurant.name,
@@ -146,8 +177,8 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> Restaur
         rating=place_stats.rating if place_stats else None,
         review_count=place_stats.review_count if place_stats else None,
         price_level=place_stats.price_level if place_stats else None,
-        open_now=place_stats.open_now if place_stats else None,
-        hours_summary=place_stats.hours_summary if place_stats else None,
+        open_now=computed_open_now if computed_open_now is not None else (place_stats.open_now if place_stats else None),
+        hours_summary=computed_hours_summary or (place_stats.hours_summary if place_stats else None),
         maps_uri=place_stats.maps_uri if place_stats else None,
         ratings_updated_at=place_stats.retrieved_at if place_stats else None,
         place_summary=place_stats.place_summary if place_stats else None,

@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -30,6 +31,16 @@ class Restaurant(Base):
     official_menu_url: Mapped[str | None] = mapped_column(String(1024))
     photo_url: Mapped[str | None] = mapped_column(String(512))
     reservation_url: Mapped[str | None] = mapped_column(String(1024))
+    hours: Mapped[list[dict] | None] = mapped_column(JSONB)
+    """Weekly hours, hand-curated from each restaurant's own site (Google
+    Places open_now/hours_summary on RestaurantPlaceStats exists but is
+    unpopulated — no restaurant has been linked+refreshed yet, and that's
+    a batch/stale snapshot even when it is). A list of
+    {"days": [0-6, Monday=0], "open": "HH:MM", "close": "HH:MM"} rules;
+    `close <= open` means the period spans past midnight (e.g. Bricco's
+    Friday 16:00-02:00). None means hours aren't curated yet for this
+    restaurant — distinct from "closed all the time". See app/hours.py.
+    """
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

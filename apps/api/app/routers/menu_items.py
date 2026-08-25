@@ -6,6 +6,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.hours import format_hours_summary, is_open_now
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
 from app.queries import (
     DishCategoryMedians,
@@ -68,6 +69,8 @@ def _to_out(
         normalization_confidence=item.normalization_confidence,
         north_end_median_price=median,
         pct_vs_median=pct_vs_median,
+        open_now=is_open_now(restaurant.hours),
+        hours_summary=format_hours_summary(restaurant.hours),
         menu_snapshot_id=item.menu_snapshot_id,
         retrieved_at=snapshot.retrieved_at,
         source_url=source.source_url,
@@ -262,6 +265,7 @@ def list_menu_items(
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
     priced_only: bool = False,
+    open_now: bool | None = Query(None, description="If true, only items at restaurants open right now (America/New_York)"),
     sort: str = Query(
         "relevance",
         description="relevance (default; ranked by text match when q is set, else price) | price | name",
@@ -301,6 +305,12 @@ def list_menu_items(
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
     rows = db.execute(stmt).all()
     items = [_to_out(item, snapshot, source, restaurant, medians) for item, snapshot, source, restaurant in rows]
+    if open_now is not None:
+        # Computed per-restaurant from Restaurant.hours (app/hours.py), not
+        # a DB column -- filtered here in Python rather than in SQL, same
+        # as everywhere else this value is produced. Fine at this dataset
+        # size (order-preserving, no pagination to break).
+        items = [item for item in items if item.open_now == open_now]
     return MenuItemList(
         total=len(items),
         items=items,

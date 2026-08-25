@@ -20,6 +20,8 @@ class RestaurantSummary(BaseModel):
     official_menu_url: str | None
     photo_url: str | None
     active: bool
+    open_now: bool | None = None
+    hours_summary: str | None = None
 
 
 class RestaurantExternalIdOut(BaseModel):
@@ -117,6 +119,8 @@ class MenuItemOut(BaseModel):
     normalization_confidence: Decimal | None
     north_end_median_price: Decimal | None = None
     pct_vs_median: float | None = None
+    open_now: bool | None = None
+    hours_summary: str | None = None
     menu_snapshot_id: str
     retrieved_at: datetime | None = None
     source_url: str | None = None

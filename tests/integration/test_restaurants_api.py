@@ -8,6 +8,21 @@ def test_list_restaurants_returns_five_active(client):
     assert all(row["photo_url"] for row in body)
 
 
+def test_list_restaurants_open_now_filter_partitions(client):
+    unfiltered = client.get("/restaurants").json()
+    open_now = client.get("/restaurants", params={"open_now": "true"}).json()
+    closed_now = client.get("/restaurants", params={"open_now": "false"}).json()
+
+    assert len(open_now) + len(closed_now) == len(unfiltered)
+    assert all(row["open_now"] is True for row in open_now)
+    assert all(row["open_now"] is False for row in closed_now)
+
+
+def test_list_restaurants_carries_hours_summary(client):
+    body = client.get("/restaurants").json()
+    assert all(row["hours_summary"] for row in body)
+
+
 def test_get_restaurant_not_found(client):
     response = client.get("/restaurants/NE_9999")
     assert response.status_code == 404

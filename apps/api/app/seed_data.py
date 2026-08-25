@@ -320,6 +320,10 @@ RESTAURANTS: list[dict[str, Any]] = [
         "official_website": "https://giacomosboston.com/",
         "official_menu_url": "https://giacomosboston.com/menu",
         "photo_url": "/restaurant-photos/giacomos-ristorante.jpg",
+        "hours": [
+            {"days": [0, 1, 2, 3, 6], "open": "12:00", "close": "22:00"},
+            {"days": [4, 5], "open": "12:00", "close": "22:30"},
+        ],
         "sources": [
             {
                 "menu_type": "dinner",
@@ -394,6 +398,10 @@ RESTAURANTS: list[dict[str, Any]] = [
         "official_website": "https://neptuneoyster.com/",
         "official_menu_url": "https://www.neptuneoyster.com/menu",
         "photo_url": "/restaurant-photos/neptune-oyster.jpg",
+        "hours": [
+            {"days": [6, 0, 1, 2, 3], "open": "11:00", "close": "22:00"},
+            {"days": [4, 5], "open": "11:00", "close": "23:00"},
+        ],
         "sources": [
             {
                 "menu_type": "dinner",
@@ -462,6 +470,10 @@ RESTAURANTS: list[dict[str, Any]] = [
         "official_website": "https://pizzeriaregina.com/north_end.html",
         "official_menu_url": "https://reginapizzeria.com/assets/files/reg-NE-menu-426.pdf",
         "photo_url": "/restaurant-photos/pizzeria-regina.jpg",
+        "hours": [
+            {"days": [0, 1, 2, 3, 4, 5], "open": "11:00", "close": "22:00"},
+            {"days": [6], "open": "11:00", "close": "21:00"},
+        ],
         "sources": [
             {
                 "menu_type": "dinner",
@@ -508,6 +520,10 @@ RESTAURANTS: list[dict[str, Any]] = [
         "official_website": "https://modernpastry.com/",
         "official_menu_url": "https://modernpastry.com/pages/pastry-list",
         "photo_url": "/restaurant-photos/modern-pastry.jpg",
+        "hours": [
+            {"days": [6, 0, 1, 2, 3], "open": "07:00", "close": "23:00"},
+            {"days": [4, 5], "open": "07:00", "close": "23:59"},
+        ],
         "sources": [
             {
                 "menu_type": "bakery",
@@ -619,6 +635,11 @@ RESTAURANTS: list[dict[str, Any]] = [
         "official_website": "https://bricco.com/",
         "official_menu_url": "https://bricco.com/menu/",
         "photo_url": "/restaurant-photos/bricco.jpg",
+        "hours": [
+            {"days": [0, 1, 2, 3, 6], "open": "16:00", "close": "23:00"},
+            {"days": [4], "open": "16:00", "close": "02:00"},
+            {"days": [5], "open": "12:00", "close": "02:00"},
+        ],
         "sources": [
             {
                 # bricco.com/menu/ links 7 separate section pages (salad-soups,

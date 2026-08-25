@@ -12,6 +12,8 @@ export type RestaurantSummary = {
   official_menu_url: string | null;
   photo_url: string | null;
   active: boolean;
+  open_now: boolean | null;
+  hours_summary: string | null;
 };
 
 export type CategoryMedian = {
@@ -44,8 +46,6 @@ export type RestaurantDetail = RestaurantSummary & {
   rating: string | null;
   review_count: number | null;
   price_level: number | null;
-  open_now: boolean | null;
-  hours_summary: string | null;
   maps_uri: string | null;
   ratings_updated_at: string | null;
 
@@ -94,6 +94,8 @@ export type MenuItem = {
   normalization_confidence: string | null;
   north_end_median_price: string | null;
   pct_vs_median: number | null;
+  open_now: boolean | null;
+  hours_summary: string | null;
   menu_snapshot_id: string;
   retrieved_at: string | null;
   source_url: string | null;

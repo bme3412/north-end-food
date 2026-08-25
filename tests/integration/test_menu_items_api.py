@@ -128,6 +128,32 @@ def test_free_text_search_matches_across_spelling_variants(client):
     assert body["total"] >= 1
 
 
+def test_open_now_filter_partitions_results_by_computed_status(client):
+    # Deliberately doesn't assert *which* restaurants are open -- that's
+    # time-dependent (the whole point of app/hours.is_open_now) and would
+    # make this test flaky depending on when it runs. Only asserts the
+    # filter actually partitions the full result set correctly.
+    unfiltered = client.get("/menu-items").json()
+    open_now = client.get("/menu-items", params={"open_now": "true"}).json()
+    closed_now = client.get("/menu-items", params={"open_now": "false"}).json()
+
+    assert open_now["total"] + closed_now["total"] == unfiltered["total"]
+    for item in open_now["items"]:
+        assert item["open_now"] is True
+    for item in closed_now["items"]:
+        assert item["open_now"] is False
+
+
+def test_every_seeded_item_carries_hours_summary(client):
+    # All 5 seeded restaurants have hand-curated Restaurant.hours.
+    response = client.get("/menu-items")
+    body = response.json()
+    assert body["total"] >= 1
+    for item in body["items"]:
+        assert item["hours_summary"]
+        assert item["open_now"] is not None
+
+
 def test_menu_item_not_found(client):
     response = client.get("/menu-items/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
