@@ -72,12 +72,21 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
             ? "border-line bg-card opacity-70"
             : "border-card bg-basil";
         const icon = (place.primary_cuisine && CUISINE_ICONS[place.primary_cuisine]) || DEFAULT_ICON;
+        const hovered = hoveredId === place.restaurant_id;
         return (
           <Marker
             key={place.restaurant_id}
             latitude={place.latitude!}
             longitude={place.longitude!}
             anchor="center"
+            // Overlapping markers in dense blocks (Salem/Hanover St) meant
+            // whichever pin happened to render later in the list sat on
+            // top regardless of hover/selection -- a hovered pin's own
+            // tooltip could end up visually buried under a sibling that
+            // just happened to be later in `mappable`. Forcing z-index by
+            // interaction state (hovered > selected > rest) keeps the
+            // pin you're actually pointing at, and its label, on top.
+            style={{ zIndex: hovered ? 1000 : active ? 500 : undefined }}
             onClick={(event) => {
               event.originalEvent.stopPropagation();
               onSelect(active ? null : place);
@@ -88,8 +97,8 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
               onMouseEnter={() => setHoveredId(place.restaurant_id)}
               onMouseLeave={() => setHoveredId((current) => (current === place.restaurant_id ? null : current))}
             >
-              {hoveredId === place.restaurant_id ? (
-                <span className="pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-linen shadow-md">
+              {hovered ? (
+                <span className="pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-sm font-semibold text-linen shadow-lg">
                   {place.name}
                 </span>
               ) : null}
@@ -100,7 +109,7 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
                 }`}
                 className={`flex items-center justify-center rounded-full border-2 shadow-md transition-transform ${statusColor} ${
                   active ? "scale-110" : "hover:scale-105"
-                }`}
+                } ${hovered ? "ring-4 ring-blue-500" : ""}`}
                 style={{ width: size, height: size, fontSize: active ? 20 : 16 }}
               >
                 <span aria-hidden="true">{icon}</span>
