@@ -11,7 +11,7 @@ export default async function RestaurantsPage() {
       <h1 className="font-[family-name:var(--font-fraunces)] text-4xl font-medium tracking-tight">
         Places
       </h1>
-      <p className="mt-2 text-muted">Five North End kitchens in the first seed.</p>
+      <p className="mt-2 text-muted">{restaurants.length} North End kitchens in the seed.</p>
       <ul className="mt-6 flex flex-col gap-3">
         {restaurants.map((restaurant) => (
           <li key={restaurant.restaurant_id}>

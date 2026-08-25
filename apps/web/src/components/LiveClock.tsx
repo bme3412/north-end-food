@@ -9,20 +9,20 @@ function formatNow(): string {
     timeZone: NORTH_END_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
   });
 }
 
 export function LiveClock() {
   // Starts null and fills in after mount, not during SSR -- the server
-  // and a client's local clock will never agree to the second, and
-  // rendering a real value during SSR would just produce a hydration
-  // mismatch warning for a value that's stale the instant it's painted.
+  // and a client's local clock will never agree, and rendering a real
+  // value during SSR would just produce a hydration mismatch warning for
+  // a value that's stale the instant it's painted.
   const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
     setTime(formatNow());
-    const id = setInterval(() => setTime(formatNow()), 1000);
+    // Minute-resolution display only needs a minute-resolution timer.
+    const id = setInterval(() => setTime(formatNow()), 30_000);
     return () => clearInterval(id);
   }, []);
 
@@ -30,10 +30,9 @@ export function LiveClock() {
 
   return (
     <span
-      className="hidden items-center gap-1.5 rounded-full bg-linen-2 px-3 py-1.5 text-xs tabular-nums text-muted sm:flex"
+      className="hidden shrink-0 text-sm tabular-nums text-muted sm:inline"
       title="Current time in the North End (America/New_York)"
     >
-      <span className="size-1.5 rounded-full bg-basil" aria-hidden="true" />
       {time} ET
     </span>
   );

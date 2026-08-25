@@ -95,13 +95,24 @@ export function FilterPanel({
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={onToggleExpanded}
-        className="mt-3 text-sm font-medium text-basil underline underline-offset-4"
-      >
-        {expanded ? "Hide filters" : "More filters"}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={filters.openNow}
+            onChange={(event) => set("openNow", event.target.checked)}
+            className="size-4 rounded border-line"
+          />
+          Open now
+        </label>
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          className="text-sm font-medium text-basil underline underline-offset-4"
+        >
+          {expanded ? "Hide filters" : "More filters"}
+        </button>
+      </div>
 
       {expanded ? (
         <div className="mt-4 space-y-4 border-t border-line pt-4">
@@ -190,15 +201,6 @@ export function FilterPanel({
                 className="size-4 rounded border-line"
               />
               Priced items only
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={filters.openNow}
-                onChange={(event) => set("openNow", event.target.checked)}
-                className="size-4 rounded border-line"
-              />
-              Open now
             </label>
             <label className="flex items-center gap-2 text-sm">
               Sort
