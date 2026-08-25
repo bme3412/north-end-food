@@ -1,11 +1,15 @@
-def test_list_restaurants_returns_five_active(client):
+def test_list_restaurants_returns_thirty_active(client):
     response = client.get("/restaurants")
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 5
+    assert len(body) == 30
     ids = {row["restaurant_id"] for row in body}
-    assert ids == {"NE_0001", "NE_0002", "NE_0003", "NE_0004", "NE_0005"}
-    assert all(row["photo_url"] for row in body)
+    assert ids == {f"NE_{i:04d}" for i in range(1, 31)}
+    # Only the original 5 hand-curated restaurants have real photos; the
+    # 25 added later (see migration 015) rely on RestaurantPhoto's
+    # monogram-avatar fallback instead of a fabricated image path.
+    original_five = {"NE_0001", "NE_0002", "NE_0003", "NE_0004", "NE_0005"}
+    assert all(row["photo_url"] for row in body if row["restaurant_id"] in original_five)
 
 
 def test_list_restaurants_open_now_filter_partitions(client):

@@ -32,26 +32,26 @@ def _hash_items(items: list[dict]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
-    if reset:
-        db.query(MenuItemIngredient).delete()
-        db.query(Ingredient).delete()
-        db.query(PriceObservation).delete()
-        db.query(MenuItem).delete()
-        db.query(MenuSnapshot).delete()
-        db.query(MenuSource).delete()
-        db.query(Restaurant).delete()
-        db.query(CanonicalDish).delete()
-        db.flush()
+def add_restaurants(db: Session, rows: list[dict], *, skip_existing: bool = False) -> dict[str, int]:
+    """Create Restaurant + MenuSource + MenuSnapshot + MenuItem rows (plus
+    derived ingredients/price observations) for each row in `rows`, using
+    the same shape as RESTAURANTS entries in seed_data.py.
 
-    for dish in CANONICAL_DISHES:
-        db.merge(CanonicalDish(**dish))
-
+    With skip_existing=True, a row whose restaurant_id already exists is
+    left untouched rather than raising a duplicate-key error -- this is
+    what lets a data migration add new restaurants to an already-seeded
+    database (dev or production) without needing seed(reset=True)'s full
+    wipe-and-recreate, which would also blow away every other
+    restaurant's menu history. See migration 015 for that use.
+    """
     now = datetime.now(timezone.utc)
     restaurant_count = 0
     item_count = 0
 
-    for row in RESTAURANTS:
+    for row in rows:
+        if skip_existing and db.get(Restaurant, row["restaurant_id"]) is not None:
+            continue
+
         sources = row["sources"]
         items = row["items"]
         extractor_model = row["extractor_model"]
@@ -104,7 +104,27 @@ def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
         record_menu_item_ingredients(db, snapshot)
 
     db.commit()
-    return {"restaurants": restaurant_count, "items": item_count, "dishes": len(CANONICAL_DISHES)}
+    return {"restaurants": restaurant_count, "items": item_count}
+
+
+def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
+    if reset:
+        db.query(MenuItemIngredient).delete()
+        db.query(Ingredient).delete()
+        db.query(PriceObservation).delete()
+        db.query(MenuItem).delete()
+        db.query(MenuSnapshot).delete()
+        db.query(MenuSource).delete()
+        db.query(Restaurant).delete()
+        db.query(CanonicalDish).delete()
+        db.flush()
+
+    for dish in CANONICAL_DISHES:
+        db.merge(CanonicalDish(**dish))
+    db.flush()
+
+    stats = add_restaurants(db, RESTAURANTS, skip_existing=not reset)
+    return {**stats, "dishes": len(CANONICAL_DISHES)}
 
 
 def main() -> None:

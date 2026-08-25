@@ -33,13 +33,13 @@ _SLUG_RE = re.compile(r"[^A-Z0-9]+")
 # instinct (see _ALIAS_MERGES above). Anything unmatched falls back to
 # "other" rather than blocking resolution.
 _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("cheese", ("cheese", "mozzarella", "parmesan", "pecorino", "ricotta", "feta", "cheddar", "mascarpone", "burrata", "romano")),
+    ("cheese", ("cheese", "mozzarella", "parmesan", "pecorino", "ricotta", "feta", "cheddar", "mascarpone", "burrata", "romano", "provolone")),
     (
         "seafood",
         (
             "lobster", "shrimp", "scallop", "clam", "mussel", "oyster", "crab", "octopus", "calamari",
             "tuna", "salmon", "fish", "sardine", "mackerel", "branzino", "sea bass", "sea bream", "redfish",
-            "bluefin", "swordfish", "urchin", "caviar", "shellfish",
+            "bluefin", "swordfish", "urchin", "caviar", "shellfish", "squid", "sole", "anchovy",
         ),
     ),
     (
@@ -47,7 +47,7 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
         (
             "chicken", "beef", "veal", "pork", "sausage", "bacon", "prosciutto", "pancetta", "salami",
             "soppressata", "pepperoni", "chorizo", "nduja", "linguica", "egg", "wild boar", "ribeye",
-            "salt pork", "patty",
+            "salt pork", "patty", "guanciale", "speck", "rabbit", "lamb", "ham", "meat",
         ),
     ),
     (
@@ -56,24 +56,35 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "onion", "garlic", "tomato", "spinach", "eggplant", "zucchini", "broccoli", "cauliflower",
             "pepper", "jalape", "peperoncino", "piri piri", "mushroom", "porcini", "artichoke", "asparagus",
             "fennel", "cucumber", "radish", "turnip", "brussels sprout", "corn", "olive", "pickle",
-            "potato", "fava bean", "haricot verts", "pumpkin",
+            "potato", "fava bean", "haricot verts", "pumpkin", "beet", "watercress", "celery", "chick pea",
+            "green bean", "kale", "leek", "lettuce", "mixed greens", "parsnip", "romaine", "white bean",
+            "peas", "grilled vegetables",
         ),
     ),
-    ("herb", ("basil", "sage", "thyme", "anise")),
+    ("herb", ("basil", "sage", "thyme", "anise", "parsley", "rosemary")),
     ("fruit", ("apple", "apricot", "blueberry", "cranberry", "raisin", "raspberry", "strawberry", "lemon", "avocado")),
-    ("nut", ("almond", "pine nut", "pistachio", "walnut")),
-    ("grain_starch", ("rice", "bread", "baguette", "brioche", "ciabatta", "cornbread", "johnnycake", "fries")),
+    ("nut", ("almond", "pine nut", "pistachio", "walnut", "hazelnut")),
+    (
+        "grain_starch",
+        (
+            "rice", "bread", "baguette", "brioche", "ciabatta", "cornbread", "johnnycake", "fries",
+            "pasta", "linguine", "pappardelle", "penne", "risotto", "ziti", "focaccia", "crouton",
+            "semolina", "agnolotti", "crostini",
+        ),
+    ),
     (
         "sauce_condiment",
         (
             "sauce", "pesto", "marinara", "aioli", "romesco", "piperrada", "besciamella", "brodo",
-            "arrabiata", "honey", "peanut butter", "nutella", "oil", "vinegar", "tartar",
+            "arrabiata", "honey", "peanut butter", "nutella", "oil", "vinegar", "tartar", "balsamic",
+            "caesar dressing", "caper", "dijon", "mustard", "vincotto", "muffaletta", "bolognese",
+            "ragu", "chile",
         ),
     ),
     ("dairy", ("cream", "butter")),
-    ("dessert", ("gelato", "ladyfinger", "amaretti")),
-    ("beverage", ("wine", "espresso martini", "limoncello")),
-    ("seasoning", ("salt", "sesame", "ginger", "truffle", "saffron")),
+    ("dessert", ("gelato", "ladyfinger", "lady finger", "amaretti", "custard", "caramel", "zabaglione", "savoiardi", "chocolate")),
+    ("beverage", ("wine", "espresso martini", "limoncello", "prosecco", "brandy", "espresso")),
+    ("seasoning", ("salt", "sesame", "ginger", "truffle", "saffron", "cinnamon", "cocoa")),
 )
 
 
