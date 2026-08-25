@@ -68,7 +68,7 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
         const statusColor = active
           ? "border-ink bg-tomato"
           : place.open_now === false
-            ? "border-card bg-muted"
+            ? "border-line bg-card opacity-70"
             : "border-card bg-basil";
         const icon = (place.primary_cuisine && CUISINE_ICONS[place.primary_cuisine]) || DEFAULT_ICON;
         return (
