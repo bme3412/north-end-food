@@ -5,7 +5,6 @@ import { formatBusynessPercent, formatDate, formatPrice, formatPriceLevel } from
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { PriceProfileCard } from "@/components/PriceProfileCard";
 import { NotConnectedCard } from "@/components/NotConnectedCard";
-import { PopularityChart } from "@/components/PopularityChart";
 import { HourlyHeatmap } from "@/components/HourlyHeatmap";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
 import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
@@ -41,7 +40,7 @@ export default async function RestaurantPage({ params }: PageProps) {
       <RestaurantPhoto
         src={restaurant.photo_url}
         alt={restaurant.name}
-        className="mt-4 h-48 w-full rounded-3xl object-cover sm:h-64"
+        className="mt-4 h-48 w-full rounded-3xl bg-linen-2 object-contain sm:h-64"
       />
       <h1 className="mt-4 font-[family-name:var(--font-fraunces)] text-4xl font-medium leading-tight tracking-tight">
         {restaurant.name}
@@ -151,40 +150,37 @@ export default async function RestaurantPage({ params }: PageProps) {
       {/* Popularity / demand */}
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
-        {restaurant.weekly_popularity ? (
-          <>
-            {restaurant.busiest_day || restaurant.quietest_day || restaurant.peak_hours_text ? (
-              <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                {restaurant.busiest_day ? (
-                  <span className="rounded-full bg-tomato-soft px-3 py-1 text-tomato">
-                    Busiest {restaurant.busiest_day}
-                  </span>
-                ) : null}
-                {restaurant.quietest_day ? (
-                  <span className="rounded-full bg-basil-soft px-3 py-1 text-basil">
-                    Quietest {restaurant.quietest_day}
-                  </span>
-                ) : null}
-                {restaurant.peak_hours_text ? (
-                  <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
-                ) : null}
-              </div>
+        {restaurant.busiest_day || restaurant.quietest_day || restaurant.peak_hours_text ? (
+          <div className="mt-2 flex flex-wrap gap-2 text-sm">
+            {restaurant.busiest_day ? (
+              <span className="rounded-full bg-tomato-soft px-3 py-1 text-tomato">Busiest {restaurant.busiest_day}</span>
             ) : null}
-            <p className="mt-2 text-xs text-muted">
-              How busy it typically gets, by day — a historical pattern from BestTime&apos;s foot-traffic data,
-              separate from the live &quot;% busy right now&quot; badge up top (which only shows while a current
-              reading is available).
-              {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
-            </p>
-          </>
+            {restaurant.quietest_day ? (
+              <span className="rounded-full bg-basil-soft px-3 py-1 text-basil">Quietest {restaurant.quietest_day}</span>
+            ) : null}
+            {restaurant.peak_hours_text ? (
+              <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
+            ) : null}
+          </div>
+        ) : null}
+        {restaurant.hourly_popularity ? (
+          <p className="mt-2 text-xs text-muted">
+            Hour-by-hour, historical pattern from BestTime&apos;s foot-traffic data, not a live reading.
+            {weeklyUpdated ? ` Last updated ${weeklyUpdated}.` : ""}
+          </p>
         ) : null}
         <div className="mt-3 rounded-3xl border border-line bg-card p-5">
-          {restaurant.weekly_popularity ? (
-            <PopularityChart weekly={restaurant.weekly_popularity} />
+          {restaurant.hourly_popularity ? (
+            <HourlyHeatmap hourly={restaurant.hourly_popularity} />
+          ) : restaurant.weekly_popularity ? (
+            <NotConnectedCard
+              title="Hour-by-hour not available yet"
+              message="We have this restaurant's daily pattern (see the badges above) but not the hourly breakdown yet — see Data sources below for details."
+            />
           ) : restaurant.busyness_percent != null ? (
             <NotConnectedCard
               title={formatBusynessPercent(restaurant.busyness_percent)}
-              message="That's the current-hour reading. The full Mon-Sun weekly pattern isn't available for this restaurant yet — see Data sources below for details."
+              message="That's the current-hour reading. The full weekly pattern isn't available for this restaurant yet — see Data sources below for details."
             />
           ) : (
             <NotConnectedCard
@@ -193,14 +189,6 @@ export default async function RestaurantPage({ params }: PageProps) {
             />
           )}
         </div>
-        {restaurant.hourly_popularity ? (
-          <div className="mt-3 rounded-3xl border border-line bg-card p-5">
-            <p className="text-xs text-muted">Hour-by-hour, across the week</p>
-            <div className="mt-3">
-              <HourlyHeatmap hourly={restaurant.hourly_popularity} />
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {/* Price profile */}
