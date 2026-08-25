@@ -30,25 +30,12 @@ export default async function RestaurantPage({ params }: PageProps) {
   const lastRefreshed = formatDate(restaurant.last_verified_at);
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
-  const jumpLinks = [
-    { href: "#menu", label: "Menu" },
-    { href: "#reviews", label: "Review intelligence" },
-    { href: "#popularity", label: "Popularity" },
-    { href: "#sources", label: "Data sources" },
-  ];
-
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6 lg:max-w-6xl">
+    <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6">
       <Link href="/" className="text-sm text-basil underline underline-offset-4">
         Back to search
       </Link>
 
-      {/* Desktop: main content + sticky on-page nav side by side so the
-          41-item menu and review/popularity sections don't read as one
-          endless scroll. Mobile keeps the original single-column flow
-          (not a reported problem) -- the nav is lg-only. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-10">
-      <div className="min-w-0">
       {/* Hero / identity */}
       <RestaurantPhoto
         src={restaurant.photo_url}
@@ -77,12 +64,6 @@ export default async function RestaurantPage({ params }: PageProps) {
         </span>
         <span className="rounded-full bg-linen-2 px-3 py-1">{menu.total} dishes</span>
 
-        {/* open_now/hours_summary come from our own curated Restaurant.hours
-            (app/hours.py), computed live -- independent of whether Google
-            Places has ever been connected for this restaurant. Previously
-            this whole row was gated on `rating != null`, so a restaurant
-            with real hours data but no Places rating (every restaurant,
-            currently) showed "not connected" even though hours were known. */}
         {restaurant.open_now != null ? (
           <span
             className={`rounded-full px-3 py-1 ${
@@ -155,30 +136,8 @@ export default async function RestaurantPage({ params }: PageProps) {
         <PriceProfileCard profile={restaurant.price_profile} restaurantName={restaurant.name} />
       </div>
 
-      {/* Full menu */}
-      <div id="menu" className="mt-8 flex flex-col gap-8 scroll-mt-6">
-        {[...sections.entries()].map(([section, items]) => (
-          <section key={section}>
-            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">{section}</h2>
-            <ul className="mt-3 divide-y divide-line rounded-3xl border border-line bg-card">
-              {items.map((item) => (
-                <li key={item.menu_item_id} className="flex items-start justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="font-bold leading-snug">{item.raw_name}</p>
-                    {item.raw_description ? (
-                      <p className="mt-1 text-sm leading-snug text-muted">{item.raw_description}</p>
-                    ) : null}
-                  </div>
-                  <p className="shrink-0 font-bold text-tomato">{formatPrice(item)}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-
       {/* Google review intelligence */}
-      <div id="reviews" className="mt-8 scroll-mt-6">
+      <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
         <p className="mt-1 text-xs text-muted">
           Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
@@ -194,7 +153,7 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
 
       {/* Popularity / demand */}
-      <div id="popularity" className="mt-8 scroll-mt-6">
+      <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
         {restaurant.weekly_popularity ? (
           <>
@@ -216,11 +175,9 @@ export default async function RestaurantPage({ params }: PageProps) {
               </div>
             ) : null}
             <p className="mt-2 text-xs text-muted">
-              Typical busyness by day of week — a historical pattern from BestTime&apos;s aggregated foot-traffic
-              data, not a live reading.
-              {restaurant.busyness_percent != null
-                ? ` The "${formatBusynessPercent(restaurant.busyness_percent)}" badge up top is the separate real-time number.`
-                : ""}
+              How busy it typically gets, by day — a historical pattern from BestTime&apos;s foot-traffic data,
+              separate from the live &quot;% busy right now&quot; badge up top (which only shows while a current
+              reading is available).
               {weeklyUpdated ? ` Pattern last updated ${weeklyUpdated}.` : ""}
             </p>
           </>
@@ -242,29 +199,31 @@ export default async function RestaurantPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Data provenance */}
-      <div id="sources" className="mt-8 scroll-mt-6">
-        <ProvenancePanel entries={restaurant.provenance} />
-      </div>
+      {/* Full menu */}
+      <div className="mt-8 flex flex-col gap-8">
+        {[...sections.entries()].map(([section, items]) => (
+          <section key={section}>
+            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">{section}</h2>
+            <ul className="mt-3 divide-y divide-line rounded-3xl border border-line bg-card">
+              {items.map((item) => (
+                <li key={item.menu_item_id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="font-bold leading-snug">{item.raw_name}</p>
+                    {item.raw_description ? (
+                      <p className="mt-1 text-sm leading-snug text-muted">{item.raw_description}</p>
+                    ) : null}
+                  </div>
+                  <p className="shrink-0 font-bold text-tomato">{formatPrice(item)}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
 
-      <aside className="hidden lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:block">
-        <nav className="rounded-3xl border border-line bg-card p-4">
-          <p className="px-1 text-xs font-medium uppercase tracking-wide text-muted">On this page</p>
-          <ul className="mt-2 flex flex-col gap-1">
-            {jumpLinks.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  className="block rounded-xl px-2 py-1.5 text-sm text-ink hover:bg-linen-2"
-                >
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </aside>
+      {/* Data provenance */}
+      <div className="mt-8">
+        <ProvenancePanel entries={restaurant.provenance} />
       </div>
     </div>
   );
