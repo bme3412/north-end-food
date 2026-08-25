@@ -30,12 +30,25 @@ export default async function RestaurantPage({ params }: PageProps) {
   const lastRefreshed = formatDate(restaurant.last_verified_at);
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
+  const jumpLinks = [
+    { href: "#menu", label: "Menu" },
+    { href: "#reviews", label: "Review intelligence" },
+    { href: "#popularity", label: "Popularity" },
+    { href: "#sources", label: "Data sources" },
+  ];
+
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6">
+    <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6 lg:max-w-6xl">
       <Link href="/" className="text-sm text-basil underline underline-offset-4">
         Back to search
       </Link>
 
+      {/* Desktop: main content + sticky on-page nav side by side so the
+          41-item menu and review/popularity sections don't read as one
+          endless scroll. Mobile keeps the original single-column flow
+          (not a reported problem) -- the nav is lg-only. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-10">
+      <div className="min-w-0">
       {/* Hero / identity */}
       <RestaurantPhoto
         src={restaurant.photo_url}
@@ -143,7 +156,7 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
 
       {/* Full menu */}
-      <div className="mt-8 flex flex-col gap-8">
+      <div id="menu" className="mt-8 flex flex-col gap-8 scroll-mt-6">
         {[...sections.entries()].map(([section, items]) => (
           <section key={section}>
             <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">{section}</h2>
@@ -165,7 +178,7 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
 
       {/* Google review intelligence */}
-      <div className="mt-8">
+      <div id="reviews" className="mt-8 scroll-mt-6">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
         <p className="mt-1 text-xs text-muted">
           Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
@@ -181,7 +194,7 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
 
       {/* Popularity / demand */}
-      <div className="mt-8">
+      <div id="popularity" className="mt-8 scroll-mt-6">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
         {restaurant.weekly_popularity ? (
           <>
@@ -228,8 +241,28 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
 
       {/* Data provenance */}
-      <div className="mt-8">
+      <div id="sources" className="mt-8 scroll-mt-6">
         <ProvenancePanel entries={restaurant.provenance} />
+      </div>
+      </div>
+
+      <aside className="hidden lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:block">
+        <nav className="rounded-3xl border border-line bg-card p-4">
+          <p className="px-1 text-xs font-medium uppercase tracking-wide text-muted">On this page</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {jumpLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="block rounded-xl px-2 py-1.5 text-sm text-ink hover:bg-linen-2"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
       </div>
     </div>
   );
