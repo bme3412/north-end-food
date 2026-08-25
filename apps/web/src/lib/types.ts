@@ -103,6 +103,7 @@ export type MenuItem = {
   latitude: number | null;
   longitude: number | null;
   establishment_type: string | null;
+  primary_cuisine: string | null;
   address: string | null;
   photo_url: string | null;
 };
@@ -114,6 +115,7 @@ export type PlaceMatch = {
   latitude: number | null;
   longitude: number | null;
   establishment_type: string;
+  primary_cuisine: string | null;
   match_count: number;
   lowest_price: string | null;
   sample_name: string;

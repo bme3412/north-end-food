@@ -1,15 +1,32 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
+import Map, { Marker, NavigationControl, type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import Supercluster from "supercluster";
 
 import { formatPrice } from "@/lib/format";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import type { PlaceMatch } from "@/lib/types";
 
 const NORTH_END = { latitude: 42.3642, longitude: -71.054, zoom: 15.4 };
+
+// 30 restaurants packed into ~0.36 sq mi meant identical circles stacked
+// directly on top of each other along Hanover/Salem St -- clustering (not
+// just prettier markers) is what actually fixes that, not just a bigger
+// dataset problem elsewhere in the app. Radius/maxZoom are tuned by eye
+// against the real North End street layout, not derived from anything.
+const CLUSTER_OPTIONS = { radius: 60, maxZoom: 17 };
+
+const CUISINE_ICONS: Record<string, string> = {
+  italian: "🍝",
+  pizza: "🍕",
+  seafood: "🦞",
+  bakery: "🥐",
+  cafe: "☕",
+};
+const DEFAULT_ICON = "🍽️";
 
 type MapViewProps = {
   places: PlaceMatch[];
@@ -19,10 +36,35 @@ type MapViewProps = {
 
 export default function MapView({ places, selectedId, onSelect }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const mapRef = useRef<MapRef>(null);
+  const [zoom, setZoom] = useState(NORTH_END.zoom);
 
   const mappable = useMemo(
     () => places.filter((place) => place.latitude != null && place.longitude != null),
     [places],
+  );
+
+  const placesById = useMemo(() => {
+    const lookup: Record<string, PlaceMatch> = {};
+    for (const place of mappable) lookup[place.restaurant_id] = place;
+    return lookup;
+  }, [mappable]);
+
+  const index = useMemo(() => {
+    const idx = new Supercluster<{ placeId: string }>(CLUSTER_OPTIONS);
+    idx.load(
+      mappable.map((place) => ({
+        type: "Feature",
+        properties: { placeId: place.restaurant_id },
+        geometry: { type: "Point", coordinates: [place.longitude!, place.latitude!] },
+      })),
+    );
+    return idx;
+  }, [mappable]);
+
+  const clusters = useMemo(
+    () => index.getClusters([-180, -85, 180, 85], Math.round(zoom)),
+    [index, zoom],
   );
 
   if (!token) {
@@ -41,31 +83,65 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
 
   return (
     <Map
+      ref={mapRef}
       mapboxAccessToken={token}
       initialViewState={NORTH_END}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       style={{ width: "100%", height: "100%" }}
       attributionControl={false}
       onClick={() => onSelect(null)}
+      onMoveEnd={(event) => setZoom(event.viewState.zoom)}
     >
       <NavigationControl position="top-right" showCompass={false} />
-      {mappable.map((place) => {
+      {clusters.map((feature) => {
+        const [longitude, latitude] = feature.geometry.coordinates;
+
+        if ("cluster" in feature.properties && feature.properties.cluster) {
+          const { cluster_id: clusterId, point_count: pointCount } = feature.properties;
+          const size = 36 + Math.min(pointCount, 20) * 1.5;
+          return (
+            <Marker
+              key={`cluster-${clusterId}`}
+              latitude={latitude}
+              longitude={longitude}
+              anchor="center"
+              onClick={(event) => {
+                event.originalEvent.stopPropagation();
+                const expansionZoom = Math.min(index.getClusterExpansionZoom(clusterId) + 0.5, 20);
+                mapRef.current?.flyTo({ center: [longitude, latitude], zoom: expansionZoom, duration: 500 });
+              }}
+            >
+              <button
+                type="button"
+                aria-label={`${pointCount} restaurants here, click to zoom in`}
+                className="flex items-center justify-center rounded-full border-2 border-card bg-ink font-bold text-linen shadow-md transition-transform hover:scale-105"
+                style={{ width: size, height: size, fontSize: 13 }}
+              >
+                {pointCount}
+              </button>
+            </Marker>
+          );
+        }
+
+        const place = placesById[feature.properties.placeId];
+        if (!place) return null;
         const active = place.restaurant_id === selectedId;
         const size = active ? 44 : 32 + Math.min(place.match_count, 4) * 4;
         // Color encodes open/closed status (from live-computed hours, see
-        // app/hours.py) rather than match count -- a raw item-count digit
-        // on every pin didn't tell anyone anything actionable. Selection
-        // still overrides to tomato so the active pin stays unambiguous.
+        // app/hours.py); content is a cuisine icon so a pin says something
+        // about the restaurant before you click it. Selection still
+        // overrides to tomato so the active pin stays unambiguous.
         const statusColor = active
           ? "border-ink bg-tomato"
           : place.open_now === false
             ? "border-card bg-muted"
             : "border-card bg-basil";
+        const icon = (place.primary_cuisine && CUISINE_ICONS[place.primary_cuisine]) || DEFAULT_ICON;
         return (
           <Marker
             key={place.restaurant_id}
-            latitude={place.latitude!}
-            longitude={place.longitude!}
+            latitude={latitude}
+            longitude={longitude}
             anchor="center"
             onClick={(event) => {
               event.originalEvent.stopPropagation();
@@ -77,15 +153,12 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
               aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
                 place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
               }`}
-              className={`flex items-center justify-center rounded-full border-2 text-linen shadow-md transition-transform ${statusColor} ${
+              className={`flex items-center justify-center rounded-full border-2 shadow-md transition-transform ${statusColor} ${
                 active ? "scale-110" : "hover:scale-105"
               }`}
-              style={{ width: size, height: size }}
+              style={{ width: size, height: size, fontSize: active ? 20 : 16 }}
             >
-              <span
-                className={`rounded-full bg-linen ${active ? "size-2" : "size-1.5"}`}
-                aria-hidden="true"
-              />
+              <span aria-hidden="true">{icon}</span>
             </button>
           </Marker>
         );

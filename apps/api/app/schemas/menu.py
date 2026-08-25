@@ -128,6 +128,7 @@ class MenuItemOut(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     establishment_type: str | None = None
+    primary_cuisine: str | None = None
     address: str | None = None
     photo_url: str | None = None
 
@@ -139,6 +140,7 @@ class PlaceMatch(BaseModel):
     latitude: float | None
     longitude: float | None
     establishment_type: str
+    primary_cuisine: str | None = None
     match_count: int
     lowest_price: Decimal | None
     sample_name: str

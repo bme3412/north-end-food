@@ -78,6 +78,7 @@ def _to_out(
         latitude=restaurant.latitude,
         longitude=restaurant.longitude,
         establishment_type=restaurant.establishment_type,
+        primary_cuisine=restaurant.primary_cuisine,
         address=restaurant.address,
         photo_url=restaurant.photo_url,
     )
@@ -189,6 +190,7 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
                 latitude=first.latitude,
                 longitude=first.longitude,
                 establishment_type=first.establishment_type or "",
+                primary_cuisine=first.primary_cuisine,
                 match_count=len(group),
                 lowest_price=min(priced) if priced else None,
                 sample_name=min(group, key=lambda item: (item.price is None, item.price or 0)).raw_name,
