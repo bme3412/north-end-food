@@ -26,6 +26,63 @@ _ALIAS_MERGES = {
 
 _SLUG_RE = re.compile(r"[^A-Z0-9]+")
 
+# Keyword -> category, checked in order against the canonical form (first
+# match wins). A keyword table generalizes to ingredients not seen yet,
+# unlike a fixed per-ingredient dict that needs an entry for every new
+# item — matching this module's own "grows over time, don't over-build"
+# instinct (see _ALIAS_MERGES above). Anything unmatched falls back to
+# "other" rather than blocking resolution.
+_CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("cheese", ("cheese", "mozzarella", "parmesan", "pecorino", "ricotta", "feta", "cheddar", "mascarpone", "burrata", "romano")),
+    (
+        "seafood",
+        (
+            "lobster", "shrimp", "scallop", "clam", "mussel", "oyster", "crab", "octopus", "calamari",
+            "tuna", "salmon", "fish", "sardine", "mackerel", "branzino", "sea bass", "sea bream", "redfish",
+            "bluefin", "swordfish", "urchin", "caviar", "shellfish",
+        ),
+    ),
+    (
+        "protein",
+        (
+            "chicken", "beef", "veal", "pork", "sausage", "bacon", "prosciutto", "pancetta", "salami",
+            "soppressata", "pepperoni", "chorizo", "nduja", "linguica", "egg", "wild boar", "ribeye",
+            "salt pork", "patty",
+        ),
+    ),
+    (
+        "vegetable",
+        (
+            "onion", "garlic", "tomato", "spinach", "eggplant", "zucchini", "broccoli", "cauliflower",
+            "pepper", "jalape", "peperoncino", "piri piri", "mushroom", "porcini", "artichoke", "asparagus",
+            "fennel", "cucumber", "radish", "turnip", "brussels sprout", "corn", "olive", "pickle",
+            "potato", "fava bean", "haricot verts", "pumpkin",
+        ),
+    ),
+    ("herb", ("basil", "sage", "thyme", "anise")),
+    ("fruit", ("apple", "apricot", "blueberry", "cranberry", "raisin", "raspberry", "strawberry", "lemon", "avocado")),
+    ("nut", ("almond", "pine nut", "pistachio", "walnut")),
+    ("grain_starch", ("rice", "bread", "baguette", "brioche", "ciabatta", "cornbread", "johnnycake", "fries")),
+    (
+        "sauce_condiment",
+        (
+            "sauce", "pesto", "marinara", "aioli", "romesco", "piperrada", "besciamella", "brodo",
+            "arrabiata", "honey", "peanut butter", "nutella", "oil", "vinegar", "tartar",
+        ),
+    ),
+    ("dairy", ("cream", "butter")),
+    ("dessert", ("gelato", "ladyfinger", "amaretti")),
+    ("beverage", ("wine", "espresso martini", "limoncello")),
+    ("seasoning", ("salt", "sesame", "ginger", "truffle", "saffron")),
+)
+
+
+def _infer_ingredient_category(canonical_form: str) -> str:
+    for category, keywords in _CATEGORY_KEYWORDS:
+        if any(keyword in canonical_form for keyword in keywords):
+            return category
+    return "other"
+
 
 def _normalize(raw: str) -> str:
     return " ".join(raw.strip().lower().split())
@@ -55,12 +112,16 @@ def _resolve_ingredient(db: Session, raw: str) -> Ingredient | None:
         ingredient = Ingredient(
             ingredient_id=ingredient_id,
             canonical_name=canonical_form.title(),
+            ingredient_category=_infer_ingredient_category(canonical_form),
             aliases=[normalized],
         )
         db.add(ingredient)
         db.flush()
-    elif normalized not in (ingredient.aliases or []):
-        ingredient.aliases = [*(ingredient.aliases or []), normalized]
+    else:
+        if normalized not in (ingredient.aliases or []):
+            ingredient.aliases = [*(ingredient.aliases or []), normalized]
+        if ingredient.ingredient_category is None:
+            ingredient.ingredient_category = _infer_ingredient_category(canonical_form)
 
     return ingredient
 

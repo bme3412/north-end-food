@@ -72,6 +72,10 @@ export function ItemSheet({
           <Fact label="Pasta" value={item.pasta_type ?? "—"} />
           <Fact label="Sauce" value={item.sauce ?? "—"} />
           <Fact label="Source" value={item.source_badge} />
+          <Fact
+            label="Extraction confidence"
+            value={item.normalization_confidence != null ? `${Math.round(Number(item.normalization_confidence) * 100)}%` : "—"}
+          />
         </dl>
         {item.ingredients?.length ? (
           <p className="mt-4 text-sm text-muted">

@@ -63,6 +63,24 @@ def test_meta_reflects_seeded_data(client):
     assert body["min_price"] <= body["max_price"]
 
 
+def test_meta_exposes_subcategory_and_ingredient_category_facets(client):
+    response = client.get("/menu-items/meta")
+    body = response.json()
+    assert body["subcategories"]
+    assert body["ingredient_categories"]
+    assert "cheese" in body["ingredient_categories"]
+
+
+def test_subcategory_filter_matches_only_dishes_in_that_subcategory(client):
+    meta = client.get("/menu-items/meta").json()
+    subcategory = meta["subcategories"][0]
+    response = client.get("/menu-items", params={"subcategory": subcategory})
+    body = response.json()
+    assert body["total"] >= 1
+    for item in body["items"]:
+        assert item["canonical_dish"] is not None
+
+
 def test_meta_ingredients_facet_is_canonical_and_deduped(client):
     response = client.get("/menu-items/meta")
     body = response.json()

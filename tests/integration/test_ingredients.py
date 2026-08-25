@@ -46,6 +46,20 @@ def test_link_matches_its_menu_item(db_session):
     assert any(alias in [i.lower() for i in item.ingredients] for alias in canonical.aliases)
 
 
+def test_ingredients_are_categorized(db_session):
+    assert db_session.get(Ingredient, "MOZZARELLA").ingredient_category == "cheese"
+    assert db_session.get(Ingredient, "LOBSTER").ingredient_category == "seafood"
+    assert db_session.get(Ingredient, "CHICKEN").ingredient_category == "protein"
+    assert db_session.get(Ingredient, "BASIL").ingredient_category == "herb"
+
+
+def test_no_seeded_ingredient_is_left_uncategorized(db_session):
+    uncategorized = [
+        row for row in db_session.scalars(select(Ingredient)) if row.ingredient_category in (None, "other")
+    ]
+    assert not uncategorized, [row.canonical_name for row in uncategorized]
+
+
 def test_record_menu_item_ingredients_is_idempotent(db_session):
     snapshot = db_session.scalar(select(MenuSnapshot).where(MenuSnapshot.restaurant_id == "NE_0001"))
     before = len(list(db_session.scalars(select(MenuItemIngredient.menu_item_id))))

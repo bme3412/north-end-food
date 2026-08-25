@@ -4,15 +4,17 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -106,8 +108,22 @@ class MenuSnapshot(Base):
     items: Mapped[list["MenuItem"]] = relationship(back_populates="snapshot", cascade="all, delete-orphan")
 
 
+# Shared by the model's Computed() column and migration 011_search_ranking
+# so the generated-column expression can't drift between them. Weighted so
+# the item's own name dominates ts_rank, with dish/category/style and
+# description as progressively weaker signals.
+SEARCH_VECTOR_SQL = (
+    "setweight(to_tsvector('english', coalesce(raw_name, '')), 'A') || "
+    "setweight(to_tsvector('english', coalesce(canonical_dish, '') || ' ' || "
+    "coalesce(canonical_category, '') || ' ' || coalesce(pasta_type, '') || ' ' || "
+    "coalesce(sauce, '')), 'B') || "
+    "setweight(to_tsvector('english', coalesce(raw_description, '')), 'C')"
+)
+
+
 class MenuItem(Base):
     __tablename__ = "menu_items"
+    __table_args__ = (Index("ix_menu_items_search_vector", "search_vector", postgresql_using="gin"),)
 
     menu_item_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
@@ -150,6 +166,8 @@ class MenuItem(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR, Computed(SEARCH_VECTOR_SQL, persisted=True))
 
     snapshot: Mapped[MenuSnapshot] = relationship(back_populates="items")
     restaurant: Mapped[Restaurant] = relationship(back_populates="menu_items")

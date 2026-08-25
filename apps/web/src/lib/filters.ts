@@ -1,6 +1,7 @@
 export type FilterState = {
   q: string;
   categories: string[];
+  subcategories: string[];
   protein: string[];
   proteinMode: "any" | "all";
   ingredients: string[];
@@ -9,13 +10,14 @@ export type FilterState = {
   minPrice: string;
   maxPrice: string;
   pricedOnly: boolean;
-  sort: "price" | "name";
+  sort: "relevance" | "price" | "name";
   restaurantId: string;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
   q: "",
   categories: [],
+  subcategories: [],
   protein: [],
   proteinMode: "any",
   ingredients: [],
@@ -24,7 +26,7 @@ export const DEFAULT_FILTERS: FilterState = {
   minPrice: "",
   maxPrice: "",
   pricedOnly: false,
-  sort: "price",
+  sort: "relevance",
   restaurantId: "",
 };
 
@@ -32,6 +34,7 @@ export function filtersToParams(filters: FilterState): Record<string, string | u
   return {
     q: filters.q || undefined,
     category: filters.categories.length ? filters.categories.join(",") : undefined,
+    subcategory: filters.subcategories.length ? filters.subcategories.join(",") : undefined,
     protein: filters.protein.length ? filters.protein.join(",") : undefined,
     protein_mode: filters.protein.length ? filters.proteinMode : undefined,
     ingredient: filters.ingredients.length ? filters.ingredients.join(",") : undefined,
@@ -49,6 +52,7 @@ export function activeFilterCount(filters: FilterState): number {
   let count = 0;
   if (filters.q.trim()) count += 1;
   if (filters.categories.length) count += 1;
+  if (filters.subcategories.length) count += 1;
   if (filters.protein.length) count += 1;
   if (filters.ingredients.length) count += 1;
   if (filters.dietary.length) count += 1;

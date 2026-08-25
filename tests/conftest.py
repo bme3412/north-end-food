@@ -42,6 +42,11 @@ def engine():
         pytest.skip(f"Postgres not reachable for tests ({exc}); start it and rerun.")
 
     test_engine = create_engine(test_url, pool_pre_ping=True)
+    with test_engine.begin() as conn:
+        # create_all only creates what the ORM models declare; pg_trgm is an
+        # extension, not a table, so it needs its own bootstrap here (the dev
+        # DB gets it from migration 001, which this fixture doesn't run).
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
     # drop_all + create_all rather than create_all alone: create_all only adds
     # missing tables, it won't add a column a model gained since the test db
     # was last created, so a stale schema from a prior run goes undetected.

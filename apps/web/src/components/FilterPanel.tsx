@@ -37,7 +37,7 @@ export function FilterPanel({
     onChange({ ...filters, [key]: value });
   };
 
-  const toggleInList = (key: "categories" | "protein" | "dietary", value: string) => {
+  const toggleInList = (key: "categories" | "subcategories" | "protein" | "dietary", value: string) => {
     const current = filters[key];
     const next = current.includes(value)
       ? current.filter((item) => item !== value)
@@ -115,6 +115,17 @@ export function FilterPanel({
             </Field>
           ) : null}
 
+          {meta?.subcategories.length ? (
+            <Field label="Style">
+              <ChipGrid
+                options={meta.subcategories}
+                selected={filters.subcategories}
+                onToggle={(value) => toggleInList("subcategories", value)}
+                labelFor={prettyCategory}
+              />
+            </Field>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="Min $">
               <input
@@ -184,6 +195,7 @@ export function FilterPanel({
                 onChange={(event) => set("sort", event.target.value as FilterState["sort"])}
                 className="rounded-lg border border-line bg-linen px-2 py-1"
               >
+                <option value="relevance">Best match</option>
                 <option value="price">Price</option>
                 <option value="name">Name</option>
               </select>

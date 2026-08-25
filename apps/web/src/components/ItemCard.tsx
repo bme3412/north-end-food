@@ -3,6 +3,14 @@ import Link from "next/link";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
+const LOW_CONFIDENCE_THRESHOLD = 0.7;
+
+function isLowConfidence(confidence: string | null): boolean {
+  if (confidence == null) return false;
+  const value = Number(confidence);
+  return Number.isFinite(value) && value < LOW_CONFIDENCE_THRESHOLD;
+}
+
 export function ItemCard({
   item,
   onOpen,
@@ -48,6 +56,14 @@ export function ItemCard({
         </Link>
         {item.canonical_category ? (
           <span className="text-muted capitalize">{prettyCategory(item.canonical_category)}</span>
+        ) : null}
+        {isLowConfidence(item.normalization_confidence) ? (
+          <span
+            className="rounded-full bg-linen-2 px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-muted"
+            title="Extraction confidence is low for this item — details may be imprecise"
+          >
+            Unverified
+          </span>
         ) : null}
       </div>
       {item.north_end_median_price != null && item.pct_vs_median != null ? (

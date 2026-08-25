@@ -145,7 +145,7 @@ CANONICAL_DISHES: list[dict[str, Any]] = [
         "category": "pizza",
         "subcategory": "white",
         "description": "Pizza without red sauce.",
-        "aliases": ["quattro formaggio", "vegetarian primavera"],
+        "aliases": ["quattro formaggio", "vegetarian primavera", "four cheese", "four cheese pizza"],
     },
     {
         "canonical_dish_id": "CANNOLI",

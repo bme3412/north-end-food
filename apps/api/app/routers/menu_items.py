@@ -6,14 +6,16 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
 from app.queries import (
     DishCategoryMedians,
     dish_and_category_medians,
+    dish_match_clause,
     ingredient_match_clause,
     item_with_source_query,
     latest_snapshot_ids,
 )
+from app.ranking import fuzzy_token_clause, relevance_order_by
 from app.schemas import MenuItemList, MenuItemOut
 from app.schemas.menu import PlaceMatch
 from app.search import parse_query
@@ -81,8 +83,7 @@ def _to_out(
 def _token_clause(token: str):
     like = f"%{token}%"
     return or_(
-        MenuItem.raw_name.ilike(like),
-        MenuItem.raw_description.ilike(like),
+        fuzzy_token_clause(token),
         MenuItem.canonical_dish.ilike(like),
         MenuItem.canonical_category.ilike(like),
         MenuItem.pasta_type.ilike(like),
@@ -91,6 +92,7 @@ def _token_clause(token: str):
         func.array_to_string(MenuItem.protein, " ").ilike(like),
         func.array_to_string(MenuItem.dietary_tags, " ").ilike(like),
         ingredient_match_clause(token),
+        dish_match_clause(token),
     )
 
 
@@ -99,6 +101,7 @@ def _apply_filters(
     *,
     q: str | None,
     category: str | None,
+    subcategory: str | None,
     canonical_dish: str | None,
     protein: str | None,
     protein_mode: str,
@@ -120,6 +123,15 @@ def _apply_filters(
     categories = _split(category)
     if categories:
         stmt = stmt.where(MenuItem.canonical_category.in_(categories))
+
+    subcategories = _split(subcategory)
+    if subcategories:
+        stmt = stmt.where(
+            MenuItem.canonical_dish.in_(
+                select(CanonicalDish.canonical_dish_id).where(CanonicalDish.subcategory.in_(subcategories))
+            )
+        )
+
     if canonical_dish:
         stmt = stmt.where(MenuItem.canonical_dish == canonical_dish.upper())
 
@@ -210,11 +222,26 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
         .where(MenuItem.menu_snapshot_id.in_(select(latest)))
         .distinct()
     ).all()
+    ingredient_categories = db.scalars(
+        select(Ingredient.ingredient_category)
+        .join(MenuItemIngredient, MenuItemIngredient.ingredient_id == Ingredient.ingredient_id)
+        .join(MenuItem, MenuItem.menu_item_id == MenuItemIngredient.menu_item_id)
+        .where(MenuItem.menu_snapshot_id.in_(select(latest)), Ingredient.ingredient_category.is_not(None))
+        .distinct()
+    ).all()
+    subcategories = db.scalars(
+        select(CanonicalDish.subcategory)
+        .join(MenuItem, MenuItem.canonical_dish == CanonicalDish.canonical_dish_id)
+        .where(MenuItem.menu_snapshot_id.in_(select(latest)), CanonicalDish.subcategory.is_not(None))
+        .distinct()
+    ).all()
     return {
         "categories": sorted(categories),
+        "subcategories": sorted(subcategories),
         "proteins": sorted(proteins),
         "dietary": sorted(dietary),
         "ingredients": sorted(ingredients),
+        "ingredient_categories": sorted(ingredient_categories),
         "min_price": float(min(prices)) if prices else None,
         "max_price": float(max(prices)) if prices else None,
     }
@@ -224,6 +251,7 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
 def list_menu_items(
     q: str | None = Query(None, description="Free text. Tokens are AND'd. Understands 'under $30'."),
     category: str | None = Query(None, description="Comma-separated canonical categories"),
+    subcategory: str | None = Query(None, description="Comma-separated canonical dish subcategories (e.g. 'stuffed', 'parm')"),
     canonical_dish: str | None = None,
     protein: str | None = Query(None, description="Comma-separated proteins"),
     protein_mode: str = Query("any", description="any = overlap, all = must include every protein"),
@@ -234,15 +262,20 @@ def list_menu_items(
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
     priced_only: bool = False,
-    sort: str = Query("price", description="price | name"),
+    sort: str = Query(
+        "relevance",
+        description="relevance (default; ranked by text match when q is set, else price) | price | name",
+    ),
     db: Session = Depends(get_db),
 ) -> MenuItemList:
     parsed = parse_query(q)
+    medians = dish_and_category_medians(db)
     stmt = item_with_source_query(db)
     stmt = _apply_filters(
         stmt,
         q=q,
         category=category,
+        subcategory=subcategory,
         canonical_dish=canonical_dish,
         protein=protein,
         protein_mode=protein_mode,
@@ -260,10 +293,13 @@ def list_menu_items(
     )
     if sort == "name":
         stmt = stmt.order_by(MenuItem.raw_name)
+    elif sort == "price":
+        stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
+    elif parsed.tokens:
+        stmt = stmt.order_by(relevance_order_by(parsed.tokens, medians), MenuItem.price.nulls_last())
     else:
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
     rows = db.execute(stmt).all()
-    medians = dish_and_category_medians(db)
     items = [_to_out(item, snapshot, source, restaurant, medians) for item, snapshot, source, restaurant in rows]
     return MenuItemList(
         total=len(items),

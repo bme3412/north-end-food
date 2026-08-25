@@ -127,9 +127,11 @@ export type MenuItemList = {
 
 export type FilterMeta = {
   categories: string[];
+  subcategories: string[];
   proteins: string[];
   dietary: string[];
   ingredients: string[];
+  ingredient_categories: string[];
   min_price: number | null;
   max_price: number | null;
 };

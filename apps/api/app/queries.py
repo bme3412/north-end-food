@@ -5,7 +5,26 @@ from decimal import Decimal
 from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+
+
+def dish_match_clause(term: str) -> ColumnElement[bool]:
+    """True for a MenuItem whose canonical dish's display name or alias
+    list contains `term`. Closes a real gap: searching "four cheese pizza"
+    previously returned nothing for the White Pizza dish, because neither
+    its raw_name text nor its ID (WHITE_PIZZA) contains "four" or "cheese"
+    -- only its alias list does, and aliases were never queried. This is
+    the same pattern as ingredient_match_clause below, one level up the
+    ontology (Dish rather than Ingredient).
+    """
+    like = f"%{term.strip().lower()}%"
+    matching_dish_ids = select(CanonicalDish.canonical_dish_id).where(
+        or_(
+            CanonicalDish.canonical_name.ilike(like),
+            func.array_to_string(CanonicalDish.aliases, " ").ilike(like),
+        )
+    )
+    return MenuItem.canonical_dish.in_(matching_dish_ids)
 
 
 def ingredient_match_clause(term: str) -> ColumnElement[bool]:
