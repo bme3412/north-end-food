@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -28,6 +28,7 @@ type MapViewProps = {
 
 export default function MapView({ places, selectedId, onSelect }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const mappable = useMemo(
     () => places.filter((place) => place.latitude != null && place.longitude != null),
@@ -82,18 +83,29 @@ export default function MapView({ places, selectedId, onSelect }: MapViewProps) 
               onSelect(active ? null : place);
             }}
           >
-            <button
-              type="button"
-              aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
-                place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
-              }`}
-              className={`flex items-center justify-center rounded-full border-2 shadow-md transition-transform ${statusColor} ${
-                active ? "scale-110" : "hover:scale-105"
-              }`}
-              style={{ width: size, height: size, fontSize: active ? 20 : 16 }}
+            <div
+              className="relative flex items-center justify-center"
+              onMouseEnter={() => setHoveredId(place.restaurant_id)}
+              onMouseLeave={() => setHoveredId((current) => (current === place.restaurant_id ? null : current))}
             >
-              <span aria-hidden="true">{icon}</span>
-            </button>
+              {hoveredId === place.restaurant_id ? (
+                <span className="pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-linen shadow-md">
+                  {place.name}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
+                  place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
+                }`}
+                className={`flex items-center justify-center rounded-full border-2 shadow-md transition-transform ${statusColor} ${
+                  active ? "scale-110" : "hover:scale-105"
+                }`}
+                style={{ width: size, height: size, fontSize: active ? 20 : 16 }}
+              >
+                <span aria-hidden="true">{icon}</span>
+              </button>
+            </div>
           </Marker>
         );
       })}
