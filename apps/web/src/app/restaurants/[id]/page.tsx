@@ -5,7 +5,7 @@ import { formatBusynessPercent, formatDate, formatPrice, formatPriceLevel } from
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { PriceProfileCard } from "@/components/PriceProfileCard";
 import { NotConnectedCard } from "@/components/NotConnectedCard";
-import { HourlyHeatmap } from "@/components/HourlyHeatmap";
+import { BusynessChart } from "@/components/BusynessChart";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
 import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
 
@@ -163,7 +163,7 @@ export default async function RestaurantPage({ params }: PageProps) {
         ) : null}
         <div className="mt-3 rounded-3xl border border-line bg-card p-5">
           {restaurant.hourly_popularity ? (
-            <HourlyHeatmap hourly={restaurant.hourly_popularity} />
+            <BusynessChart hourly={restaurant.hourly_popularity} />
           ) : restaurant.weekly_popularity ? (
             <NotConnectedCard
               title="Hour-by-hour not available yet"
