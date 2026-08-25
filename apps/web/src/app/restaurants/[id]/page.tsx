@@ -131,11 +131,6 @@ export default async function RestaurantPage({ params }: PageProps) {
 
       {lastRefreshed ? <p className="mt-3 text-xs text-muted">Last data refresh: {lastRefreshed}</p> : null}
 
-      {/* Price profile */}
-      <div className="mt-8">
-        <PriceProfileCard profile={restaurant.price_profile} restaurantName={restaurant.name} />
-      </div>
-
       {/* Google review intelligence */}
       <div className="mt-8">
         <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
@@ -197,6 +192,11 @@ export default async function RestaurantPage({ params }: PageProps) {
             />
           )}
         </div>
+      </div>
+
+      {/* Price profile */}
+      <div className="mt-8">
+        <PriceProfileCard profile={restaurant.price_profile} restaurantName={restaurant.name} />
       </div>
 
       {/* Full menu */}
