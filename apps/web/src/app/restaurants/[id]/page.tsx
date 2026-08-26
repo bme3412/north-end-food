@@ -31,17 +31,12 @@ export default async function RestaurantPage({ params }: PageProps) {
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-16 pt-6 sm:px-6">
+    <div className="mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6">
       <Link href="/" className="text-sm text-basil underline underline-offset-4">
         Back to search
       </Link>
 
-      {/* Hero / identity */}
-      <RestaurantPhoto
-        src={restaurant.photo_url}
-        alt={restaurant.name}
-        className="mt-4 h-48 w-full rounded-3xl bg-linen-2 object-contain sm:h-64"
-      />
+      {/* Identity header */}
       <h1 className="mt-4 font-[family-name:var(--font-fraunces)] text-4xl font-medium leading-tight tracking-tight">
         {restaurant.name}
       </h1>
@@ -131,61 +126,74 @@ export default async function RestaurantPage({ params }: PageProps) {
 
       {lastRefreshed ? <p className="mt-3 text-xs text-muted">Last data refresh: {lastRefreshed}</p> : null}
 
-      {/* Google review intelligence */}
-      <div className="mt-8">
-        <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
-        <p className="mt-1 text-xs text-muted">
-          Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
-          doesn&apos;t expose food/service/value/atmosphere separately here).
-        </p>
-        <div className="mt-3">
-          <ReviewSummaryCard
-            summary={restaurant.review_summary}
-            disclosure={restaurant.review_summary_disclosure}
-            reviewsUri={restaurant.reviews_uri}
+      {/* Photo (left) + review/popularity/price stats (right) side by side,
+          rather than stacked full-width, so the page reads in one screenful
+          instead of a long scroll of sequential sections. */}
+      <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          <RestaurantPhoto
+            src={restaurant.photo_url}
+            alt={restaurant.name}
+            className="aspect-[3/4] w-full max-w-xs rounded-3xl bg-linen-2 object-cover lg:max-w-none"
           />
         </div>
-      </div>
 
-      {/* Popularity / demand */}
-      <div className="mt-8">
-        <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
-        {restaurant.peak_hours_text ? (
-          <div className="mt-2 flex flex-wrap gap-2 text-sm">
-            <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
+        <div className="flex flex-col gap-8">
+          {/* Google review intelligence */}
+          <div>
+            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
+            <p className="mt-1 text-xs text-muted">
+              Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
+              doesn&apos;t expose food/service/value/atmosphere separately here).
+            </p>
+            <div className="mt-3">
+              <ReviewSummaryCard
+                summary={restaurant.review_summary}
+                disclosure={restaurant.review_summary_disclosure}
+                reviewsUri={restaurant.reviews_uri}
+              />
+            </div>
           </div>
-        ) : null}
-        {restaurant.hourly_popularity ? (
-          <p className="mt-2 text-xs text-muted">
-            Hour-by-hour, historical pattern from Google&apos;s Popular Times data, not a live reading.
-            {weeklyUpdated ? ` Last updated ${weeklyUpdated}.` : ""}
-          </p>
-        ) : null}
-        <div className="mt-3 rounded-3xl border border-line bg-card p-5">
-          {restaurant.hourly_popularity ? (
-            <BusynessChart hourly={restaurant.hourly_popularity} />
-          ) : restaurant.weekly_popularity ? (
-            <NotConnectedCard
-              title="Hour-by-hour not available yet"
-              message="We have this restaurant's daily pattern but not the hourly breakdown yet — see Data sources below for details."
-            />
-          ) : restaurant.busyness_percent != null ? (
-            <NotConnectedCard
-              title={formatBusynessPercent(restaurant.busyness_percent)}
-              message="That's the current-hour reading. The full weekly pattern isn't available for this restaurant yet — see Data sources below for details."
-            />
-          ) : (
-            <NotConnectedCard
-              title="Crowd data not available yet"
-              message="We don't have foot-traffic data for this restaurant yet. See Data sources below for details."
-            />
-          )}
-        </div>
-      </div>
 
-      {/* Price profile */}
-      <div className="mt-8">
-        <PriceProfileCard profile={restaurant.price_profile} restaurantName={restaurant.name} />
+          {/* Popularity / demand */}
+          <div>
+            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
+            {restaurant.peak_hours_text ? (
+              <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
+              </div>
+            ) : null}
+            {restaurant.hourly_popularity ? (
+              <p className="mt-2 text-xs text-muted">
+                Hour-by-hour, historical pattern from Google&apos;s Popular Times data, not a live reading.
+                {weeklyUpdated ? ` Last updated ${weeklyUpdated}.` : ""}
+              </p>
+            ) : null}
+            <div className="mt-3 rounded-3xl border border-line bg-card p-5">
+              {restaurant.hourly_popularity ? (
+                <BusynessChart hourly={restaurant.hourly_popularity} />
+              ) : restaurant.weekly_popularity ? (
+                <NotConnectedCard
+                  title="Hour-by-hour not available yet"
+                  message="We have this restaurant's daily pattern but not the hourly breakdown yet — see Data sources below for details."
+                />
+              ) : restaurant.busyness_percent != null ? (
+                <NotConnectedCard
+                  title={formatBusynessPercent(restaurant.busyness_percent)}
+                  message="That's the current-hour reading. The full weekly pattern isn't available for this restaurant yet — see Data sources below for details."
+                />
+              ) : (
+                <NotConnectedCard
+                  title="Crowd data not available yet"
+                  message="We don't have foot-traffic data for this restaurant yet. See Data sources below for details."
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Price profile */}
+          <PriceProfileCard profile={restaurant.price_profile} restaurantName={restaurant.name} />
+        </div>
       </div>
 
       {/* Full menu */}
