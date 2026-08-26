@@ -142,10 +142,6 @@ export default async function RestaurantPage({ params }: PageProps) {
           {/* Google review intelligence */}
           <div>
             <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
-            <p className="mt-1 text-xs text-muted">
-              Google&apos;s AI-generated review summary — a single narrative, not a per-aspect breakdown (Google
-              doesn&apos;t expose food/service/value/atmosphere separately here).
-            </p>
             <div className="mt-3">
               <ReviewSummaryCard
                 summary={restaurant.review_summary}
