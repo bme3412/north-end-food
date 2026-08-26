@@ -64,8 +64,18 @@ export function FilterPanel({
             onChange={(event) => set("q", event.target.value)}
             inputMode="search"
             placeholder="Search North End…"
-            className="h-12 w-full rounded-xl border border-line bg-linen pl-9 pr-3 text-[0.98rem] outline-none ring-tomato/25 focus:ring-4"
+            className="h-12 w-full rounded-xl border border-line bg-linen pl-9 pr-9 text-[0.98rem] outline-none ring-tomato/25 focus:ring-4"
           />
+          {filters.q ? (
+            <button
+              type="button"
+              onClick={() => set("q", "")}
+              aria-label="Clear search"
+              className="absolute inset-y-0 right-2 flex items-center px-1 text-muted hover:text-ink"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          ) : null}
         </label>
         <button
           type="button"

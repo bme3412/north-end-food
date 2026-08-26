@@ -1,5 +1,4 @@
 import { formatDollars, formatPrice } from "@/lib/format";
-import { NORTH_END_CENTER, haversineMiles } from "@/lib/geo";
 import type { DishGroup } from "@/lib/dishGroups";
 import type { MenuItem } from "@/lib/types";
 
@@ -24,28 +23,17 @@ export function DishGroupCard({
         <p className="mt-1 text-xs text-muted">Avg {formatDollars(group.avgPrice)}</p>
       ) : null}
       <div className="mt-3 flex flex-col divide-y divide-line/60">
-        {group.items.map((item) => {
-          const distance =
-            item.latitude != null && item.longitude != null
-              ? haversineMiles(item.latitude, item.longitude, NORTH_END_CENTER.latitude, NORTH_END_CENTER.longitude)
-              : null;
-          return (
-            <button
-              key={item.menu_item_id}
-              type="button"
-              onClick={() => onOpen(item)}
-              className="flex items-center justify-between gap-3 py-2 text-left text-sm"
-            >
-              <span className="min-w-0">
-                <span className="block truncate text-ink">{item.restaurant_name}</span>
-                {distance != null ? (
-                  <span className="block text-xs text-muted">{distance.toFixed(1)} mi</span>
-                ) : null}
-              </span>
-              <span className="shrink-0 font-bold text-tomato">{formatPrice(item)}</span>
-            </button>
-          );
-        })}
+        {group.items.map((item) => (
+          <button
+            key={item.menu_item_id}
+            type="button"
+            onClick={() => onOpen(item)}
+            className="flex items-center justify-between gap-3 py-2 text-left text-sm"
+          >
+            <span className="min-w-0 truncate text-ink">{item.restaurant_name}</span>
+            <span className="shrink-0 font-bold text-tomato">{formatPrice(item)}</span>
+          </button>
+        ))}
       </div>
     </article>
   );
