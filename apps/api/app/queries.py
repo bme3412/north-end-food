@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, Select, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
 
@@ -71,6 +71,7 @@ def item_with_source_query(db: Session) -> Select:
         .join(MenuSource, MenuSnapshot.menu_source_id == MenuSource.menu_source_id)
         .join(Restaurant, MenuItem.restaurant_id == Restaurant.restaurant_id)
         .where(MenuItem.menu_snapshot_id.in_(select(latest)))
+        .options(selectinload(Restaurant.place_stats))
     )
 
 

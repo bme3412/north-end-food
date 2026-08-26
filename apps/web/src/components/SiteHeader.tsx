@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
 import { useAsOfTime } from "@/lib/asOfTime";
+import { useServiceMode } from "@/lib/serviceMode";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -62,10 +62,12 @@ function OpenNowCheckbox() {
   );
 }
 
-// Purely cosmetic to match the mockup -- there's no backend concept of
-// dine-in vs. takeout availability, so this never affects search results.
+// Filters results via the shared service-mode context (see
+// lib/serviceMode.tsx) -- picking Takeout excludes restaurants Google has
+// explicitly confirmed don't offer it, keeping everyone else (most
+// restaurants don't have an answer yet).
 function ServiceModeToggle() {
-  const [mode, setMode] = useState<"dine-in" | "takeout">("dine-in");
+  const { mode, setMode } = useServiceMode();
 
   return (
     <div className="hidden items-center gap-1 rounded-full bg-linen-2 p-1 sm:flex">

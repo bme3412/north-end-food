@@ -88,6 +88,9 @@ def main() -> None:
             stats.review_summary = details.review_summary
             stats.review_summary_disclosure = details.review_summary_disclosure
             stats.reviews_uri = details.reviews_uri
+            stats.takeout = details.takeout
+            stats.dine_in = details.dine_in
+            stats.delivery = details.delivery
             stats.retrieved_at = now
             db.commit()
             refreshed += 1

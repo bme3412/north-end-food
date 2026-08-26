@@ -261,7 +261,7 @@ function PlaceDetailCard({
             <p className="mt-3 text-sm leading-relaxed text-ink">{detail.place_summary}</p>
           ) : null}
 
-          {topCategories.length || (detail && detail.reservation_url == null) ? (
+          {topCategories.length || (detail && detail.reservation_url == null) || place.takeout ? (
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               {topCategories.map((category) => (
                 <span
@@ -272,6 +272,9 @@ function PlaceDetailCard({
                   {prettyCategory(category)}
                 </span>
               ))}
+              {place.takeout ? (
+                <span className="rounded-full bg-basil-soft px-2.5 py-1 text-basil">🥡 Takeout available</span>
+              ) : null}
               {detail && detail.reservation_url == null ? (
                 <span className="rounded-full bg-linen-2 px-2.5 py-1 text-muted">ⓘ No reservations</span>
               ) : null}

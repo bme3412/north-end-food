@@ -48,6 +48,9 @@ export type RestaurantDetail = RestaurantSummary & {
   price_level: number | null;
   maps_uri: string | null;
   ratings_updated_at: string | null;
+  takeout: boolean | null;
+  dine_in: boolean | null;
+  delivery: boolean | null;
 
   place_summary: string | null;
   place_summary_disclosure: string | null;
@@ -97,6 +100,11 @@ export type MenuItem = {
   pct_vs_median: number | null;
   open_now: boolean | null;
   hours_summary: string | null;
+  rating: string | null;
+  price_level: number | null;
+  takeout: boolean | null;
+  dine_in: boolean | null;
+  delivery: boolean | null;
   menu_snapshot_id: string;
   retrieved_at: string | null;
   source_url: string | null;
@@ -123,6 +131,11 @@ export type PlaceMatch = {
   photo_url: string | null;
   open_now: boolean | null;
   hours_summary: string | null;
+  rating: string | null;
+  price_level: number | null;
+  takeout: boolean | null;
+  dine_in: boolean | null;
+  delivery: boolean | null;
 };
 
 export type MenuItemList = {

@@ -68,6 +68,9 @@ class RestaurantDetail(RestaurantSummary):
     hours_summary: str | None = None
     maps_uri: str | None = None
     ratings_updated_at: datetime | None = None
+    takeout: bool | None = None
+    dine_in: bool | None = None
+    delivery: bool | None = None
 
     # AI-generated summaries from Places API (New) — each must be shown
     # with its own disclosure text per Google's attribution requirement.
@@ -122,6 +125,11 @@ class MenuItemOut(BaseModel):
     pct_vs_median: float | None = None
     open_now: bool | None = None
     hours_summary: str | None = None
+    rating: Decimal | None = None
+    price_level: int | None = None
+    takeout: bool | None = None
+    dine_in: bool | None = None
+    delivery: bool | None = None
     menu_snapshot_id: str
     retrieved_at: datetime | None = None
     source_url: str | None = None
@@ -148,6 +156,11 @@ class PlaceMatch(BaseModel):
     photo_url: str | None = None
     open_now: bool | None = None
     hours_summary: str | None = None
+    rating: Decimal | None = None
+    price_level: int | None = None
+    takeout: bool | None = None
+    dine_in: bool | None = None
+    delivery: bool | None = None
 
 
 class MenuItemList(BaseModel):

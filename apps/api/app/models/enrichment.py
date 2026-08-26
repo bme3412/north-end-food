@@ -28,6 +28,13 @@ class RestaurantPlaceStats(Base):
     hours_summary: Mapped[str | None] = mapped_column(Text)
     maps_uri: Mapped[str | None] = mapped_column(String(1024))
 
+    # Places API (New) exposes these directly on Place Details -- same call
+    # already made for rating/hours/price. Null (not false) means "Google
+    # hasn't told us," which callers must treat as unknown, not "no."
+    takeout: Mapped[bool | None] = mapped_column(Boolean)
+    dine_in: Mapped[bool | None] = mapped_column(Boolean)
+    delivery: Mapped[bool | None] = mapped_column(Boolean)
+
     # AI-generated summaries Places API (New) returns directly — each MUST
     # be shown with its own disclosure text per Google's attribution terms,
     # so we store the exact localized string they return rather than

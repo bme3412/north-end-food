@@ -17,7 +17,11 @@ import {
   filtersToParams,
   type FilterState,
 } from "@/lib/filters";
+import { NORTH_END_CENTER, haversineMiles } from "@/lib/geo";
+import { serviceModeToParams, useServiceMode } from "@/lib/serviceMode";
 import type { FilterMeta, MenuItem, PlaceMatch } from "@/lib/types";
+
+type RestaurantSort = "matched" | "rating" | "price" | "distance";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
@@ -26,7 +30,9 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 
 export function SearchWorkspace() {
   const { asOf, openNowEnabled } = useAsOfTime();
+  const { mode: serviceMode } = useServiceMode();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [restaurantSort, setRestaurantSort] = useState<RestaurantSort>("matched");
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [places, setPlaces] = useState<PlaceMatch[]>([]);
@@ -49,6 +55,7 @@ export function SearchWorkspace() {
       listMenuItems({
         ...filtersToParams(filters),
         ...asOfTimeToParams(asOf),
+        ...serviceModeToParams(serviceMode),
         open_now: openNowEnabled ? "true" : undefined,
       })
         .then((data) => {
@@ -61,7 +68,7 @@ export function SearchWorkspace() {
         .finally(() => setLoading(false));
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [filters, asOf, openNowEnabled]);
+  }, [filters, asOf, openNowEnabled, serviceMode]);
 
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
@@ -76,7 +83,29 @@ export function SearchWorkspace() {
   }, [items, selectedPlaceId]);
 
   const filterCount = activeFilterCount(filters);
+  const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
+
+  const sortedPlaces = useMemo(() => {
+    if (restaurantSort === "matched") return places;
+    const withMetric = places.map((place) => {
+      if (restaurantSort === "rating") return { place, metric: place.rating != null ? Number(place.rating) : null };
+      if (restaurantSort === "price") return { place, metric: place.price_level };
+      const metric =
+        place.latitude != null && place.longitude != null
+          ? haversineMiles(place.latitude, place.longitude, NORTH_END_CENTER.latitude, NORTH_END_CENTER.longitude)
+          : null;
+      return { place, metric };
+    });
+    const ascending = restaurantSort === "price" || restaurantSort === "distance";
+    withMetric.sort((a, b) => {
+      if (a.metric == null && b.metric == null) return 0;
+      if (a.metric == null) return 1;
+      if (b.metric == null) return -1;
+      return ascending ? a.metric - b.metric : b.metric - a.metric;
+    });
+    return withMetric.map((entry) => entry.place);
+  }, [places, restaurantSort]);
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-14 flex flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">
@@ -103,9 +132,26 @@ export function SearchWorkspace() {
         />
 
         <div className="flex flex-col gap-3 border-t border-b border-line px-5 py-4">
-          <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
-            <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="Dishes" />
-            <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="Restaurants" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
+              <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="Dishes" />
+              <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="Restaurants" />
+            </div>
+            {!groupByDish ? (
+              <label className="flex items-center gap-1.5 text-xs text-muted">
+                Sort
+                <select
+                  value={restaurantSort}
+                  onChange={(event) => setRestaurantSort(event.target.value as RestaurantSort)}
+                  className="rounded-lg border border-line bg-linen px-2 py-1 text-xs text-ink"
+                >
+                  <option value="matched">Most matched dishes</option>
+                  <option value="rating">Rating</option>
+                  <option value="price">Price</option>
+                  <option value="distance">Distance</option>
+                </select>
+              </label>
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between text-sm">
@@ -144,7 +190,15 @@ export function SearchWorkspace() {
             <div className="flex flex-col gap-4">
               <SectionHeader
                 icon={groupByDish ? "🍴" : "🏪"}
-                label={groupByDish ? "Matched Dishes" : "Matched Restaurants"}
+                label={
+                  groupByDish
+                    ? hasActiveSearch
+                      ? "Matched Dishes"
+                      : "All Dishes"
+                    : hasActiveSearch
+                      ? "Matched Restaurants"
+                      : "All Restaurants"
+                }
               />
               {groupByDish ? (
                 <>
@@ -168,7 +222,7 @@ export function SearchWorkspace() {
                 </>
               ) : (
                 <>
-                  {places.map((place) => (
+                  {sortedPlaces.map((place) => (
                     <RestaurantRow key={place.restaurant_id} place={place} />
                   ))}
                   {!loading && places.length === 0 ? (

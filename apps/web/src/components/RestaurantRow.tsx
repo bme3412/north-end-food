@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatDollars, prettyCategory } from "@/lib/format";
+import { formatDollars, formatPriceLevel, prettyCategory } from "@/lib/format";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import type { PlaceMatch } from "@/lib/types";
 
@@ -20,7 +20,9 @@ export function RestaurantRow({ place }: { place: PlaceMatch }) {
           {place.name}
         </p>
         <p className="mt-0.5 truncate text-xs text-muted">
+          {place.rating != null ? <span>★ {place.rating} · </span> : null}
           {place.primary_cuisine ? <span className="capitalize">{prettyCategory(place.primary_cuisine)}</span> : null}
+          {place.price_level != null ? <span> · {formatPriceLevel(place.price_level)}</span> : null}
           {place.lowest_price != null ? <span> · from {formatDollars(place.lowest_price)}</span> : null}
           <span>
             {" "}

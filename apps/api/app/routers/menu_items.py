@@ -45,6 +45,8 @@ def _to_out(
     if median and item.price is not None and not item.market_price:
         pct_vs_median = float((item.price / median - 1) * 100)
 
+    place_stats = restaurant.place_stats
+
     return MenuItemOut(
         menu_item_id=item.menu_item_id,
         restaurant_id=item.restaurant_id,
@@ -74,6 +76,11 @@ def _to_out(
         pct_vs_median=pct_vs_median,
         open_now=compute_open_status(restaurant.hours, at_day, at_time, at_until),
         hours_summary=format_hours_summary(restaurant.hours),
+        rating=place_stats.rating if place_stats else None,
+        price_level=place_stats.price_level if place_stats else None,
+        takeout=place_stats.takeout if place_stats else None,
+        dine_in=place_stats.dine_in if place_stats else None,
+        delivery=place_stats.delivery if place_stats else None,
         menu_snapshot_id=item.menu_snapshot_id,
         retrieved_at=snapshot.retrieved_at,
         source_url=source.source_url,
@@ -200,6 +207,11 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
                 photo_url=first.photo_url,
                 open_now=first.open_now,
                 hours_summary=first.hours_summary,
+                rating=first.rating,
+                price_level=first.price_level,
+                takeout=first.takeout,
+                dine_in=first.dine_in,
+                delivery=first.delivery,
             )
         )
     places.sort(key=lambda place: (-place.match_count, place.name))
@@ -273,6 +285,11 @@ def list_menu_items(
     max_price: Decimal | None = None,
     priced_only: bool = False,
     open_now: bool | None = Query(None, description="If true, only items at restaurants open right now (America/New_York)"),
+    service_mode: str | None = Query(
+        None,
+        pattern=r"^(dine_in|takeout)$",
+        description="'dine_in' or 'takeout' -- excludes only restaurants Google has explicitly confirmed do NOT offer that mode; restaurants with no data yet (null) are kept, not excluded.",
+    ),
     at_day: int | None = Query(None, ge=0, le=6, description="Preview day, 0=Mon..6=Sun, instead of today. Pairs with at_time."),
     at_time: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Preview time 'HH:MM' (24h, America/New_York), instead of right now. Pairs with at_day."),
     at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window, not just at_time."),
@@ -324,6 +341,13 @@ def list_menu_items(
         # as everywhere else this value is produced. Fine at this dataset
         # size (order-preserving, no pagination to break).
         items = [item for item in items if item.open_now == open_now]
+    if service_mode is not None:
+        # Exclude only a *confirmed* False from Google -- most restaurants
+        # won't have this populated yet (null), and treating "we don't
+        # know" the same as "no" would make the toggle look broken by
+        # hiding restaurants that likely do offer it.
+        flag = "takeout" if service_mode == "takeout" else "dine_in"
+        items = [item for item in items if getattr(item, flag) is not False]
     return MenuItemList(
         total=len(items),
         items=items,

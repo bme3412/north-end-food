@@ -164,6 +164,23 @@ def test_every_seeded_item_carries_hours_summary(client):
         assert item["open_now"] is not None
 
 
+def test_service_mode_filter_excludes_only_confirmed_false(client, db_session):
+    from app.models import RestaurantPlaceStats
+
+    # NE_0002 explicitly does not offer takeout, per Google; every other
+    # seeded restaurant's takeout status is left unset (null/unknown) and
+    # must NOT be excluded just because we don't have an answer yet.
+    db_session.add(RestaurantPlaceStats(restaurant_id="NE_0002", takeout=False))
+    db_session.commit()
+
+    unfiltered = client.get("/menu-items").json()
+    takeout_only = client.get("/menu-items", params={"service_mode": "takeout"}).json()
+
+    assert takeout_only["total"] < unfiltered["total"]
+    assert all(item["restaurant_id"] != "NE_0002" for item in takeout_only["items"])
+    assert any(item["restaurant_id"] == "NE_0001" for item in takeout_only["items"])
+
+
 def test_menu_item_not_found(client):
     response = client.get("/menu-items/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404

@@ -3,6 +3,7 @@ import { Atkinson_Hyperlegible, Fraunces } from "next/font/google";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import { AsOfTimeProvider } from "@/lib/asOfTime";
+import { ServiceModeProvider } from "@/lib/serviceMode";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -34,8 +35,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${fraunces.variable} ${atkinson.variable} h-full`}>
       <body className="min-h-full bg-linen text-ink antialiased">
         <AsOfTimeProvider>
-          <SiteHeader />
-          {children}
+          <ServiceModeProvider>
+            <SiteHeader />
+            {children}
+          </ServiceModeProvider>
         </AsOfTimeProvider>
       </body>
     </html>

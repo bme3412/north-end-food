@@ -40,6 +40,9 @@ DETAILS_FIELD_MASK = ",".join(
         "googleMapsUri",
         "generativeSummary",
         "reviewSummary",
+        "takeout",
+        "dineIn",
+        "delivery",
     ]
 )
 SEARCH_FIELD_MASK = "places.id,places.displayName,places.formattedAddress"
@@ -67,6 +70,9 @@ class PlaceDetails:
     review_summary: str | None
     review_summary_disclosure: str | None
     reviews_uri: str | None
+    takeout: bool | None
+    dine_in: bool | None
+    delivery: bool | None
 
 
 def is_configured() -> bool:
@@ -139,4 +145,7 @@ def fetch_place_details(place_id: str) -> PlaceDetails | None:
         review_summary=review_summary,
         review_summary_disclosure=review_summary_disclosure,
         reviews_uri=review_summary_block.get("reviewsUri"),
+        takeout=result.get("takeout"),
+        dine_in=result.get("dineIn"),
+        delivery=result.get("delivery"),
     )
