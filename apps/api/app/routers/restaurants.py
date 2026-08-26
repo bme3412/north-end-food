@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
-from app.hours import format_hours_summary, is_open_now
+from app.hours import compute_open_status, format_hours_summary
 from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant
 from app.queries import latest_snapshot_ids, price_profile
 from app.schemas import RestaurantDetail, RestaurantExternalIdOut, RestaurantSummary
@@ -15,7 +15,12 @@ from app.schemas.menu import CategoryMedianOut, PriceProfileOut, ProvenanceEntry
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
 
-def _to_summary(restaurant: Restaurant) -> RestaurantSummary:
+def _to_summary(
+    restaurant: Restaurant,
+    at_day: int | None = None,
+    at_time: str | None = None,
+    at_until: str | None = None,
+) -> RestaurantSummary:
     return RestaurantSummary(
         restaurant_id=restaurant.restaurant_id,
         name=restaurant.name,
@@ -30,7 +35,7 @@ def _to_summary(restaurant: Restaurant) -> RestaurantSummary:
         official_menu_url=restaurant.official_menu_url,
         photo_url=restaurant.photo_url,
         active=restaurant.active,
-        open_now=is_open_now(restaurant.hours),
+        open_now=compute_open_status(restaurant.hours, at_day, at_time, at_until),
         hours_summary=format_hours_summary(restaurant.hours),
     )
 
@@ -56,17 +61,26 @@ def _time_ago(moment: datetime | None) -> str | None:
 @router.get("", response_model=list[RestaurantSummary])
 def list_restaurants(
     open_now: bool | None = Query(None, description="If true, only restaurants open right now (America/New_York)"),
+    at_day: int | None = Query(None, ge=0, le=6, description="Preview day, 0=Mon..6=Sun, instead of today. Pairs with at_time."),
+    at_time: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Preview time 'HH:MM' (24h, America/New_York), instead of right now. Pairs with at_day."),
+    at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window."),
     db: Session = Depends(get_db),
 ) -> list[RestaurantSummary]:
     restaurants = list(db.scalars(select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)))
-    summaries = [_to_summary(restaurant) for restaurant in restaurants]
+    summaries = [_to_summary(restaurant, at_day=at_day, at_time=at_time, at_until=at_until) for restaurant in restaurants]
     if open_now is not None:
         summaries = [summary for summary in summaries if summary.open_now == open_now]
     return summaries
 
 
 @router.get("/{restaurant_id}", response_model=RestaurantDetail)
-def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> RestaurantDetail:
+def get_restaurant(
+    restaurant_id: str,
+    at_day: int | None = Query(None, ge=0, le=6, description="Preview day, 0=Mon..6=Sun, instead of today. Pairs with at_time."),
+    at_time: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Preview time 'HH:MM' (24h, America/New_York), instead of right now. Pairs with at_day."),
+    at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window."),
+    db: Session = Depends(get_db),
+) -> RestaurantDetail:
     restaurant = db.scalar(
         select(Restaurant)
         .options(selectinload(Restaurant.external_ids), selectinload(Restaurant.place_stats), selectinload(Restaurant.busyness_stats))
@@ -150,7 +164,7 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)) -> Restaur
 
     profile = price_profile(db, restaurant_id)
 
-    computed_open_now = is_open_now(restaurant.hours)
+    computed_open_now = compute_open_status(restaurant.hours, at_day, at_time, at_until)
     computed_hours_summary = format_hours_summary(restaurant.hours)
 
     return RestaurantDetail(

@@ -6,7 +6,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.hours import format_hours_summary, is_open_now
+from app.hours import compute_open_status, format_hours_summary
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
 from app.queries import (
     DishCategoryMedians,
@@ -36,6 +36,9 @@ def _to_out(
     source: MenuSource,
     restaurant: Restaurant,
     medians: DishCategoryMedians,
+    at_day: int | None = None,
+    at_time: str | None = None,
+    at_until: str | None = None,
 ) -> MenuItemOut:
     median = medians.median_for(canonical_dish=item.canonical_dish, canonical_category=item.canonical_category)
     pct_vs_median: float | None = None
@@ -69,7 +72,7 @@ def _to_out(
         normalization_confidence=item.normalization_confidence,
         north_end_median_price=median,
         pct_vs_median=pct_vs_median,
-        open_now=is_open_now(restaurant.hours),
+        open_now=compute_open_status(restaurant.hours, at_day, at_time, at_until),
         hours_summary=format_hours_summary(restaurant.hours),
         menu_snapshot_id=item.menu_snapshot_id,
         retrieved_at=snapshot.retrieved_at,
@@ -270,6 +273,9 @@ def list_menu_items(
     max_price: Decimal | None = None,
     priced_only: bool = False,
     open_now: bool | None = Query(None, description="If true, only items at restaurants open right now (America/New_York)"),
+    at_day: int | None = Query(None, ge=0, le=6, description="Preview day, 0=Mon..6=Sun, instead of today. Pairs with at_time."),
+    at_time: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Preview time 'HH:MM' (24h, America/New_York), instead of right now. Pairs with at_day."),
+    at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window, not just at_time."),
     sort: str = Query(
         "relevance",
         description="relevance (default; ranked by text match when q is set, else price) | price | name",
@@ -308,7 +314,10 @@ def list_menu_items(
     else:
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
     rows = db.execute(stmt).all()
-    items = [_to_out(item, snapshot, source, restaurant, medians) for item, snapshot, source, restaurant in rows]
+    items = [
+        _to_out(item, snapshot, source, restaurant, medians, at_day=at_day, at_time=at_time, at_until=at_until)
+        for item, snapshot, source, restaurant in rows
+    ]
     if open_now is not None:
         # Computed per-restaurant from Restaurant.hours (app/hours.py), not
         # a DB column -- filtered here in Python rather than in SQL, same

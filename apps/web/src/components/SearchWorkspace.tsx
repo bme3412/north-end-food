@@ -7,7 +7,9 @@ import { DishGroupCard } from "@/components/DishGroupCard";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ItemCard } from "@/components/ItemCard";
 import { ItemSheet } from "@/components/ItemSheet";
+import { RestaurantRow } from "@/components/RestaurantRow";
 import { getFilterMeta, listMenuItems } from "@/lib/api";
+import { asOfTimeToParams, formatAsOfLabel, useAsOfTime } from "@/lib/asOfTime";
 import { groupItemsByDish } from "@/lib/dishGroups";
 import {
   activeFilterCount,
@@ -23,6 +25,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 });
 
 export function SearchWorkspace() {
+  const { asOf } = useAsOfTime();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -43,7 +46,7 @@ export function SearchWorkspace() {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setLoading(true);
-      listMenuItems(filtersToParams(filters))
+      listMenuItems({ ...filtersToParams(filters), ...asOfTimeToParams(asOf) })
         .then((data) => {
           setItems(data.items);
           setPlaces(data.places);
@@ -54,7 +57,7 @@ export function SearchWorkspace() {
         .finally(() => setLoading(false));
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [filters]);
+  }, [filters, asOf]);
 
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
@@ -95,44 +98,53 @@ export function SearchWorkspace() {
           onToggleExpanded={() => setFiltersExpanded((open) => !open)}
         />
 
-        <div className="flex items-center justify-between border-b border-line px-4 py-2 text-sm">
-          <span className="text-muted">
-            {loading
-              ? "Searching menus…"
-              : `${visibleItems.length} dish${visibleItems.length === 1 ? "" : "es"} · ${places.length} place${places.length === 1 ? "" : "s"}`}
-          </span>
-          {filterCount ? (
-            <span className="rounded-full bg-basil-soft px-2 py-0.5 text-xs text-basil">
-              {filterCount} filter{filterCount === 1 ? "" : "s"}
+        <div className="flex flex-col gap-3 border-t border-b border-line px-5 py-4">
+          <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
+            <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="Dishes" />
+            <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="Restaurants" />
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted">
+              {loading
+                ? "Searching menus…"
+                : groupByDish
+                  ? `${visibleItems.length} dish${visibleItems.length === 1 ? "" : "es"} · ${places.length} place${places.length === 1 ? "" : "s"}`
+                  : `${places.length} place${places.length === 1 ? "" : "s"}`}
             </span>
+            {filterCount ? (
+              <span className="rounded-full bg-basil-soft px-2 py-0.5 text-xs text-basil">
+                {filterCount} filter{filterCount === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </div>
+
+          {selectedPlaceId ? (
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-basil-soft/40 px-3 py-2 text-sm">
+              <span>Showing one restaurant</span>
+              <button
+                type="button"
+                onClick={() => selectPlace(null)}
+                className="font-medium text-basil underline underline-offset-2"
+              >
+                Show all
+              </button>
+            </div>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-1 border-b border-line px-4 py-2">
-          <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="By dish" />
-          <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="All items" />
-        </div>
-
-        {selectedPlaceId ? (
-          <div className="flex items-center justify-between gap-2 border-b border-line bg-basil-soft/40 px-4 py-2 text-sm">
-            <span>Showing one restaurant</span>
-            <button
-              type="button"
-              onClick={() => selectPlace(null)}
-              className="font-medium text-basil underline underline-offset-2"
-            >
-              Show all
-            </button>
-          </div>
-        ) : null}
-
-        <div className="p-4">
+        <div className="p-5">
           {error ? (
             <p className="rounded-2xl bg-tomato-soft px-4 py-3 text-sm">Can’t reach the API. {error}</p>
           ) : (
-            <div className="flex flex-col gap-3">
-              {groupByDish
-                ? grouped.map((group) =>
+            <div className="flex flex-col gap-4">
+              <SectionHeader
+                icon={groupByDish ? "🍴" : "🏪"}
+                label={groupByDish ? "Matched Dishes" : "Matched Restaurants"}
+              />
+              {groupByDish ? (
+                <>
+                  {grouped.map((group) =>
                     group.restaurantCount >= 2 ? (
                       <DishGroupCard key={group.key} group={group} onOpen={setSelectedItem} />
                     ) : (
@@ -143,15 +155,25 @@ export function SearchWorkspace() {
                         compact
                       />
                     ),
-                  )
-                : visibleItems.map((item) => (
-                    <ItemCard key={item.menu_item_id} item={item} onOpen={setSelectedItem} compact />
+                  )}
+                  {!loading && visibleItems.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
+                      No dishes matched. Widen the search or clear filters.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  {places.map((place) => (
+                    <RestaurantRow key={place.restaurant_id} place={place} />
                   ))}
-              {!loading && visibleItems.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
-                  No dishes matched. Widen the search or clear filters.
-                </p>
-              ) : null}
+                  {!loading && places.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
+                      No restaurants matched. Widen the search or clear filters.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -180,12 +202,14 @@ export function SearchWorkspace() {
               className={`size-1.5 rounded-full ${filters.openNow ? "bg-linen" : "bg-basil"}`}
               aria-hidden="true"
             />
-            Open now
+            {asOf ? `Open ${formatAsOfLabel(asOf)}` : "Open now"}
           </button>
           <MapView
             places={places}
             selectedId={selectedPlaceId}
+            selectedItems={visibleItems}
             onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
+            onOpenItem={setSelectedItem}
           />
         </div>
       </section>
@@ -205,6 +229,15 @@ export function SearchWorkspace() {
   );
 }
 
+function SectionHeader({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span aria-hidden="true">{icon}</span>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-muted">{label}</h2>
+    </div>
+  );
+}
+
 function ViewModeButton({
   active,
   onClick,
@@ -218,7 +251,7 @@ function ViewModeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+      className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide ${
         active ? "bg-ink text-linen" : "text-muted"
       }`}
     >

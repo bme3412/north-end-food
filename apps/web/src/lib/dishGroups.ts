@@ -8,6 +8,7 @@ export type DishGroup = {
   restaurantCount: number;
   minPrice: number | null;
   maxPrice: number | null;
+  avgPrice: number | null;
 };
 
 /** Groups items sharing a canonical_dish so they can be compared across
@@ -46,6 +47,7 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
       restaurantCount: new Set(sorted.map((item) => item.restaurant_id)).size,
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
+      avgPrice: prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : null,
     });
   }
 

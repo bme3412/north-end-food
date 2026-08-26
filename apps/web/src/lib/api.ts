@@ -18,8 +18,13 @@ export function listRestaurants(): Promise<RestaurantSummary[]> {
   return getJson("/restaurants");
 }
 
-export function getRestaurant(id: string): Promise<RestaurantDetail> {
-  return getJson(`/restaurants/${id}`);
+export function getRestaurant(id: string, params: Record<string, string | undefined> = {}): Promise<RestaurantDetail> {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value);
+  }
+  const qs = search.toString();
+  return getJson(`/restaurants/${id}${qs ? `?${qs}` : ""}`);
 }
 
 export function getFilterMeta(): Promise<FilterMeta> {

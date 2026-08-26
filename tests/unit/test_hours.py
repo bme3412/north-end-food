@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from app.hours import format_hours_summary, is_open_now
+from app.hours import compute_open_status, format_hours_summary, is_open_during, is_open_now
 
 TZ = ZoneInfo("America/New_York")
 
@@ -67,3 +67,43 @@ def test_format_hours_summary_compresses_contiguous_day_ranges():
 
 def test_format_hours_summary_handles_missing_hours():
     assert format_hours_summary(None) is None
+
+
+def test_is_open_during_no_hours_means_unknown():
+    assert is_open_during(None, 0, time(17, 0), time(19, 0)) is None
+
+
+def test_is_open_during_covers_the_whole_window():
+    # Monday 5-9pm sits entirely inside Monday's 4pm-11pm period.
+    assert is_open_during(BRICCO_HOURS, 0, time(17, 0), time(21, 0)) is True
+
+
+def test_is_open_during_false_if_window_starts_before_open():
+    # Monday 3-9pm starts before the 4pm open.
+    assert is_open_during(BRICCO_HOURS, 0, time(15, 0), time(21, 0)) is False
+
+
+def test_is_open_during_false_if_window_ends_after_close():
+    # Monday 5pm-midnight ends after the 11pm close.
+    assert is_open_during(BRICCO_HOURS, 0, time(17, 0), time(23, 59)) is False
+
+
+def test_is_open_during_rejects_a_window_that_itself_wraps_midnight():
+    # end <= start isn't a same-day window this function models -- see its
+    # docstring on the overnight-window limitation.
+    assert is_open_during(BRICCO_HOURS, 4, time(23, 0), time(1, 0)) is False
+
+
+def test_compute_open_status_defaults_to_real_now():
+    assert compute_open_status(BRICCO_HOURS, None, None, None) == is_open_now(BRICCO_HOURS)
+
+
+def test_compute_open_status_previews_a_specific_day_and_time():
+    # Monday (day=0) 5pm preview, regardless of the real current time.
+    assert compute_open_status(BRICCO_HOURS, 0, "17:00", None) is True
+    assert compute_open_status(BRICCO_HOURS, 0, "15:00", None) is False
+
+
+def test_compute_open_status_previews_a_range():
+    assert compute_open_status(BRICCO_HOURS, 0, "17:00", "21:00") is True
+    assert compute_open_status(BRICCO_HOURS, 0, "15:00", "21:00") is False

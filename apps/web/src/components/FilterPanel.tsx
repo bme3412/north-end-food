@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+import { formatAsOfLabel, useAsOfTime } from "@/lib/asOfTime";
+import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { prettyCategory } from "@/lib/format";
 import type { FilterState } from "@/lib/filters";
 import { DEFAULT_FILTERS } from "@/lib/filters";
@@ -33,6 +35,7 @@ export function FilterPanel({
   expanded,
   onToggleExpanded,
 }: FilterPanelProps) {
+  const { asOf } = useAsOfTime();
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onChange({ ...filters, [key]: value });
   };
@@ -59,20 +62,57 @@ export function FilterPanel({
   });
 
   return (
-    <div className="border-b border-line bg-card/80 p-4 backdrop-blur-sm">
-      <label className="block">
-        <span className="sr-only">Search menus</span>
-        <input
-          value={filters.q}
-          onChange={(event) => set("q", event.target.value)}
-          inputMode="search"
-          placeholder="lobster ravioli under $30, gluten-free…"
-          className="h-12 w-full rounded-xl border border-line bg-linen px-3 text-[0.98rem] outline-none ring-tomato/25 focus:ring-4"
-        />
-      </label>
+    <div className="bg-card/80 p-5 backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <label className="relative block min-w-0 flex-1">
+          <span className="sr-only">Search menus</span>
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted" aria-hidden="true">
+            🔍
+          </span>
+          <input
+            value={filters.q}
+            onChange={(event) => set("q", event.target.value)}
+            inputMode="search"
+            placeholder="Search North End…"
+            className="h-12 w-full rounded-xl border border-line bg-linen pl-9 pr-3 text-[0.98rem] outline-none ring-tomato/25 focus:ring-4"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          aria-label={expanded ? "Hide filters" : "More filters"}
+          aria-pressed={expanded}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-lg ${
+            expanded ? "border-ink bg-ink text-linen" : "border-line bg-linen text-ink"
+          }`}
+        >
+          <span aria-hidden="true">⚙︎</span>
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {(meta?.categories ?? [])
+          .filter((category) => FEATURED_CATEGORIES.includes(category))
+          .map((category) => {
+          const active = filters.categories.includes(category);
+          return (
+            <button
+              key={category}
+              type="button"
+              onClick={() => toggleInList("categories", category)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm capitalize ${
+                active ? "bg-ink text-linen" : "border border-line bg-linen"
+              }`}
+            >
+              <span aria-hidden="true">{CATEGORY_ICONS[category] ?? DEFAULT_CATEGORY_ICON}</span>
+              {prettyCategory(category)}
+            </button>
+          );
+        })}
+      </div>
 
       {parsedTokens.length ? (
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-3 text-xs text-muted">
           Also matching:{" "}
           {parsedTokens.map((token) => (
             <span key={token} className="mr-1 inline-block rounded-full bg-linen-2 px-2 py-0.5 capitalize">
@@ -82,7 +122,7 @@ export function FilterPanel({
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {SUGGESTIONS.map((term) => (
           <button
             key={term}
@@ -95,7 +135,7 @@ export function FilterPanel({
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-medium">
           <input
             type="checkbox"
@@ -103,15 +143,8 @@ export function FilterPanel({
             onChange={(event) => set("openNow", event.target.checked)}
             className="size-4 rounded border-line"
           />
-          Open now
+          {asOf ? `Open ${formatAsOfLabel(asOf)}` : "Open now"}
         </label>
-        <button
-          type="button"
-          onClick={onToggleExpanded}
-          className="text-sm font-medium text-basil underline underline-offset-4"
-        >
-          {expanded ? "Hide filters" : "More filters"}
-        </button>
       </div>
 
       {expanded ? (

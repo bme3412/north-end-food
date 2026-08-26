@@ -13,7 +13,7 @@ right now" needs to be computed now, not read back from a stale row.
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 NORTH_END_TZ = ZoneInfo("America/New_York")
@@ -60,6 +60,60 @@ def is_open_now(hours: list[dict] | None, now: datetime | None = None) -> bool |
             elif overnight and current < close_t:
                 return True
     return False
+
+
+def _anchor_datetime(day: int, at: time) -> datetime:
+    """A tz-aware datetime whose weekday() is `day` (0=Mon..6=Sun, matching
+    `hours[*]["days"]`) and whose time is `at`. The calendar date itself is
+    meaningless -- `is_open_now` only reads `.weekday()`/`.time()` off it --
+    so any Monday works as the anchor; Jan 1 2024 was one.
+    """
+    anchor_monday = datetime(2024, 1, 1, tzinfo=NORTH_END_TZ)
+    return (anchor_monday + timedelta(days=day)).replace(hour=at.hour, minute=at.minute)
+
+
+def is_open_during(hours: list[dict] | None, day: int, start: time, end: time) -> bool | None:
+    """True if a single period fully covers the same-day window [start, end)
+    -- e.g. "open from 6 to 9pm Friday" -- rather than just being open at
+    each endpoint (a restaurant open at 6pm and again at 9pm but closed in
+    between shouldn't count). The *period* may itself run overnight (e.g.
+    16:00-02:00); the requested [start, end) window may not.
+    """
+    if not hours:
+        return None
+    if end <= start:
+        return False
+    for period in hours:
+        if day not in period["days"]:
+            continue
+        open_t = _parse_time(period["open"])
+        close_t = _parse_time(period["close"])
+        overnight = close_t <= open_t
+        if not overnight:
+            if open_t <= start and end <= close_t:
+                return True
+        elif start >= open_t or end <= close_t:
+            return True
+    return False
+
+
+def compute_open_status(
+    hours: list[dict] | None,
+    at_day: int | None,
+    at_time: str | None,
+    at_until: str | None,
+) -> bool | None:
+    """The single entry point every router uses to answer "is this
+    restaurant open": the real current moment by default, or a simulated
+    day/time (optionally through an end time, for a range) when the caller
+    is previewing the "set a time" filter instead of asking about right now.
+    """
+    if at_day is None or at_time is None:
+        return is_open_now(hours)
+    start = _parse_time(at_time)
+    if at_until:
+        return is_open_during(hours, at_day, start, _parse_time(at_until))
+    return is_open_now(hours, now=_anchor_datetime(at_day, start))
 
 
 def _format_clock(value: str) -> str:
