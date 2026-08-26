@@ -10,7 +10,6 @@ export type FilterState = {
   minPrice: string;
   maxPrice: string;
   pricedOnly: boolean;
-  openNow: boolean;
   sort: "relevance" | "price" | "name";
   restaurantId: string;
 };
@@ -27,7 +26,6 @@ export const DEFAULT_FILTERS: FilterState = {
   minPrice: "",
   maxPrice: "",
   pricedOnly: false,
-  openNow: false,
   sort: "relevance",
   restaurantId: "",
 };
@@ -45,7 +43,6 @@ export function filtersToParams(filters: FilterState): Record<string, string | u
     min_price: filters.minPrice || undefined,
     max_price: filters.maxPrice || undefined,
     priced_only: filters.pricedOnly ? "true" : undefined,
-    open_now: filters.openNow ? "true" : undefined,
     sort: filters.sort,
     restaurant_id: filters.restaurantId || undefined,
   };
@@ -61,7 +58,6 @@ export function activeFilterCount(filters: FilterState): number {
   if (filters.dietary.length) count += 1;
   if (filters.minPrice || filters.maxPrice) count += 1;
   if (filters.pricedOnly) count += 1;
-  if (filters.openNow) count += 1;
   if (filters.restaurantId) count += 1;
   return count;
 }

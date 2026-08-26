@@ -33,14 +33,26 @@ export function TimePreviewControl() {
         type="button"
         onClick={() => (open ? setOpen(false) : openPicker())}
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm ${
-          isLive ? "text-muted hover:bg-linen-2" : "bg-tomato-soft text-tomato"
+        aria-label="Set a time to preview open hours"
+        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+          isLive
+            ? "border-line bg-card text-ink hover:bg-linen-2"
+            : "border-tomato bg-tomato-soft text-tomato"
         }`}
       >
-        {isLive ? <LiveClock /> : <span className="tabular-nums">{formatAsOfLabel(asOf)}</span>}
-        <span aria-hidden="true" className="text-[0.6rem]">
-          ▾
-        </span>
+        {isLive ? <LiveClock /> : <span className="tabular-nums font-medium">{formatAsOfLabel(asOf)}</span>}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          className={`size-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 6l4 4 4-4" />
+        </svg>
       </button>
 
       {open ? (

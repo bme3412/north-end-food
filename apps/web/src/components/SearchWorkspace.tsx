@@ -9,7 +9,7 @@ import { ItemCard } from "@/components/ItemCard";
 import { ItemSheet } from "@/components/ItemSheet";
 import { RestaurantRow } from "@/components/RestaurantRow";
 import { getFilterMeta, listMenuItems } from "@/lib/api";
-import { asOfTimeToParams, formatAsOfLabel, useAsOfTime } from "@/lib/asOfTime";
+import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
 import { groupItemsByDish } from "@/lib/dishGroups";
 import {
   activeFilterCount,
@@ -25,7 +25,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 });
 
 export function SearchWorkspace() {
-  const { asOf } = useAsOfTime();
+  const { asOf, openNowEnabled } = useAsOfTime();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -46,7 +46,11 @@ export function SearchWorkspace() {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setLoading(true);
-      listMenuItems({ ...filtersToParams(filters), ...asOfTimeToParams(asOf) })
+      listMenuItems({
+        ...filtersToParams(filters),
+        ...asOfTimeToParams(asOf),
+        open_now: openNowEnabled ? "true" : undefined,
+      })
         .then((data) => {
           setItems(data.items);
           setPlaces(data.places);
@@ -57,7 +61,7 @@ export function SearchWorkspace() {
         .finally(() => setLoading(false));
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [filters, asOf]);
+  }, [filters, asOf, openNowEnabled]);
 
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
@@ -186,24 +190,6 @@ export function SearchWorkspace() {
         }`}
       >
         <div className="relative min-h-[42vh] flex-1 lg:min-h-0">
-          {/* The filter sidebar (and its "Open now" checkbox) is hidden
-              while the mobile Map tab is active, so this is the only way
-              to reach that toggle without switching to the Dishes tab
-              first -- floats on the map itself, desktop already has the
-              sidebar control visible alongside the map. */}
-          <button
-            type="button"
-            onClick={() => setFilters((current) => ({ ...current, openNow: !current.openNow }))}
-            className={`absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-md lg:hidden ${
-              filters.openNow ? "border-basil bg-basil text-linen" : "border-line bg-card/95 text-ink backdrop-blur-sm"
-            }`}
-          >
-            <span
-              className={`size-1.5 rounded-full ${filters.openNow ? "bg-linen" : "bg-basil"}`}
-              aria-hidden="true"
-            />
-            {asOf ? `Open ${formatAsOfLabel(asOf)}` : "Open now"}
-          </button>
           <MapView
             places={places}
             selectedId={selectedPlaceId}

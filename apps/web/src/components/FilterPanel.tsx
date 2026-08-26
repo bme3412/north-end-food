@@ -3,20 +3,11 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { formatAsOfLabel, useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { prettyCategory } from "@/lib/format";
 import type { FilterState } from "@/lib/filters";
 import { DEFAULT_FILTERS } from "@/lib/filters";
 import type { FilterMeta } from "@/lib/types";
-
-const SUGGESTIONS = [
-  "lobster ravioli under $35",
-  "seafood pasta",
-  "vegetarian pizza",
-  "octopus",
-  "cannoli",
-];
 
 type FilterPanelProps = {
   filters: FilterState;
@@ -35,7 +26,6 @@ export function FilterPanel({
   expanded,
   onToggleExpanded,
 }: FilterPanelProps) {
-  const { asOf } = useAsOfTime();
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onChange({ ...filters, [key]: value });
   };
@@ -121,31 +111,6 @@ export function FilterPanel({
           ))}
         </p>
       ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {SUGGESTIONS.map((term) => (
-          <button
-            key={term}
-            type="button"
-            onClick={() => set("q", term)}
-            className="rounded-full bg-tomato-soft px-2.5 py-1 text-xs text-ink"
-          >
-            {term}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            checked={filters.openNow}
-            onChange={(event) => set("openNow", event.target.checked)}
-            className="size-4 rounded border-line"
-          />
-          {asOf ? `Open ${formatAsOfLabel(asOf)}` : "Open now"}
-        </label>
-      </div>
 
       {expanded ? (
         <div className="mt-4 space-y-4 border-t border-line pt-4">

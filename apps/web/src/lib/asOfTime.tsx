@@ -12,13 +12,22 @@ type AsOfTimeContextValue = {
   asOf: AsOfTime;
   setAsOf: (next: AsOfTime) => void;
   isLive: boolean;
+  // Whether the "Open now" checkbox (header, next to the clock) is
+  // filtering results at all -- on by default, independent of whether a
+  // specific preview day/time is also set.
+  openNowEnabled: boolean;
+  setOpenNowEnabled: (next: boolean) => void;
 };
 
 const AsOfTimeContext = createContext<AsOfTimeContextValue | null>(null);
 
 export function AsOfTimeProvider({ children }: { children: ReactNode }) {
   const [asOf, setAsOf] = useState<AsOfTime>(null);
-  const value = useMemo<AsOfTimeContextValue>(() => ({ asOf, setAsOf, isLive: asOf === null }), [asOf]);
+  const [openNowEnabled, setOpenNowEnabled] = useState(true);
+  const value = useMemo<AsOfTimeContextValue>(
+    () => ({ asOf, setAsOf, isLive: asOf === null, openNowEnabled, setOpenNowEnabled }),
+    [asOf, openNowEnabled],
+  );
   return <AsOfTimeContext.Provider value={value}>{children}</AsOfTimeContext.Provider>;
 }
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
+import { useAsOfTime } from "@/lib/asOfTime";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ export function SiteHeader() {
             <HeaderTab href="/restaurants" label="Places" active={pathname?.startsWith("/restaurants") ?? false} />
           </nav>
           <ServiceModeToggle />
+          <OpenNowCheckbox />
           <TimePreviewControl />
         </div>
       </div>
@@ -41,6 +43,22 @@ function HeaderTab({ href, label, active }: { href: string; label: string; activ
     >
       {label}
     </Link>
+  );
+}
+
+function OpenNowCheckbox() {
+  const { openNowEnabled, setOpenNowEnabled } = useAsOfTime();
+
+  return (
+    <label className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink">
+      <input
+        type="checkbox"
+        checked={openNowEnabled}
+        onChange={(event) => setOpenNowEnabled(event.target.checked)}
+        className="size-4 rounded border-line"
+      />
+      <span className="hidden sm:inline">Open now</span>
+    </label>
   );
 }
 
