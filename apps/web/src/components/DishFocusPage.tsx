@@ -18,6 +18,14 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 
 const TOP_SLICE = 5;
 
+type SortKey = "rank" | "price" | "distance";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  rank: "Best match",
+  price: "Lowest price",
+  distance: "Nearest",
+};
+
 function itemToPlaceMatch(item: MenuItem): PlaceMatch {
   return {
     restaurant_id: item.restaurant_id,
@@ -72,18 +80,57 @@ function assignQualityBadges(items: MenuItem[]): Map<string, string> {
 export function DishFocusPage({ group }: { group: DishGroup }) {
   const [showTop5, setShowTop5] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
 
   const qualityBadges = useMemo(() => assignQualityBadges(group.items), [group.items]);
-  const visibleItems = showTop5 ? group.items.slice(0, TOP_SLICE) : group.items;
+
+  // Distance is computed once per item here (not inside the render loop)
+  // so it can double as the "distance" sort key as well as the per-row
+  // display value -- one source, two uses.
+  const distanceByItem = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const item of group.items) {
+      map.set(
+        item.menu_item_id,
+        item.latitude != null && item.longitude != null
+          ? haversineMiles(item.latitude, item.longitude, NORTH_END_CENTER.latitude, NORTH_END_CENTER.longitude)
+          : null,
+      );
+    }
+    return map;
+  }, [group.items]);
+
+  // `group.items` arrives price-sorted (today's "rank"/"Best match" order).
+  // Re-sorting only reorders a copy -- items missing the sort field (no
+  // price, no resolvable distance) sink to the end rather than being
+  // dropped, so switching sort never hides a restaurant.
+  const sortedItems = useMemo(() => {
+    if (sortKey === "rank") return group.items;
+    const withMetric = group.items.map((item) => ({
+      item,
+      metric: sortKey === "price" ? (item.price != null ? Number(item.price) : null) : distanceByItem.get(item.menu_item_id) ?? null,
+    }));
+    withMetric.sort((a, b) => {
+      if (a.metric == null && b.metric == null) return 0;
+      if (a.metric == null) return 1;
+      if (b.metric == null) return -1;
+      return a.metric - b.metric;
+    });
+    return withMetric.map((entry) => entry.item);
+  }, [group.items, sortKey, distanceByItem]);
+
+  const visibleItems = showTop5 ? sortedItems.slice(0, TOP_SLICE) : sortedItems;
 
   const places = useMemo(() => visibleItems.map(itemToPlaceMatch), [visibleItems]);
+  // Ranks follow the current sort order, not the original price order, so
+  // the map pins and the list numbers always agree with what's on screen.
   const ranks = useMemo(() => {
     const map: Record<string, number> = {};
-    group.items.forEach((item, index) => {
+    sortedItems.forEach((item, index) => {
       map[item.restaurant_id] = index + 1;
     });
     return map;
-  }, [group.items]);
+  }, [sortedItems]);
 
   const selectedItem = visibleItems.find((item) => item.restaurant_id === selectedId) ?? null;
 
@@ -97,18 +144,39 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
             <h2 className="text-sm text-muted">
               {group.restaurantCount} restaurant{group.restaurantCount === 1 ? "" : "s"} serve {group.displayName}
             </h2>
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <span>Sort by</span>
+              <label className="relative">
+                <span className="sr-only">Sort by</span>
+                <select
+                  value={sortKey}
+                  onChange={(event) => setSortKey(event.target.value as SortKey)}
+                  className="appearance-none rounded-full bg-ink py-1.5 pl-3.5 pr-7 text-sm font-medium text-linen outline-none"
+                >
+                  {(Object.keys(SORT_LABELS) as SortKey[]).map((value) => (
+                    <option key={value} value={value}>
+                      {SORT_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[0.6rem] text-linen"
+                >
+                  ▾
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">
             {visibleItems.map((item, index) => {
-              // `visibleItems` is always a prefix of the already
-              // price-sorted `group.items` (either the whole thing or its
-              // first TOP_SLICE), so the map index here doubles as the
-              // correct 1-based rank without a second lookup.
-              const distanceMiles =
-                item.latitude != null && item.longitude != null
-                  ? haversineMiles(item.latitude, item.longitude, NORTH_END_CENTER.latitude, NORTH_END_CENTER.longitude)
-                  : null;
+              // `visibleItems` is always a prefix of `sortedItems` (either
+              // the whole thing or its first TOP_SLICE), so the map index
+              // here doubles as the correct 1-based rank without a second
+              // lookup, and stays consistent with the `ranks` map passed
+              // to MapView regardless of which sort is active.
+              const distanceMiles = distanceByItem.get(item.menu_item_id) ?? null;
               return (
                 <RankedDishRow
                   key={item.menu_item_id}

@@ -42,15 +42,22 @@ export function DishSummaryCard({ group }: { group: DishGroup }) {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted">
-          <span>
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true">🍴</span>
             {group.restaurantCount} restaurant{group.restaurantCount === 1 ? "" : "s"}
           </span>
           {group.minPrice != null && group.maxPrice != null ? (
-            <span>
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden="true">🏷️</span>
               {formatDollars(group.minPrice)} – {formatDollars(group.maxPrice)}
             </span>
           ) : null}
-          {medianPrice != null ? <span>Median {formatDollars(medianPrice)}</span> : null}
+          {medianPrice != null ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden="true">📊</span>
+              Median {formatDollars(medianPrice)}
+            </span>
+          ) : null}
           {group.restaurantCount >= POPULAR_THRESHOLD ? <Badge tone="tomato">Popular</Badge> : null}
         </div>
       </div>

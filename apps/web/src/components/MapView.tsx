@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
+import Map, { FullscreenControl, Marker, NavigationControl, ScaleControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { getRestaurant, listMenuItems } from "@/lib/api";
@@ -81,6 +81,8 @@ export default function MapView({
       onClick={() => onSelect(null)}
     >
       <NavigationControl position="top-right" showCompass={false} />
+      <FullscreenControl position="top-right" />
+      <ScaleControl position="bottom-left" unit="imperial" />
       {mappable.map((place) => {
         const active = place.restaurant_id === selectedId;
         const closed = place.open_now === false;
@@ -133,7 +135,7 @@ export default function MapView({
               onMouseEnter={() => setHoveredId(place.restaurant_id)}
               onMouseLeave={() => setHoveredId((current) => (current === place.restaurant_id ? null : current))}
             >
-              {(hovered && !active) || active ? (
+              {ranked || (hovered && !active) || active ? (
                 <span
                   className={`pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold shadow-lg ${
                     active ? "border border-line bg-card text-ink" : "bg-ink text-linen"

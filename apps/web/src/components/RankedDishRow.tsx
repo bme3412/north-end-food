@@ -48,8 +48,13 @@ export function RankedDishRow({
               {item.open_now ? "Open now" : "Closed"}
             </Badge>
           ) : null}
-          {item.dine_in ? <Badge tone="muted">🍴 Dine-in</Badge> : null}
-          {item.takeout ? <Badge tone="muted">🥡 Takeout</Badge> : null}
+          {item.dine_in && item.takeout ? (
+            <Badge tone="muted">🍴 Dine-in · Takeout</Badge>
+          ) : item.dine_in ? (
+            <Badge tone="muted">🍴 Dine-in</Badge>
+          ) : item.takeout ? (
+            <Badge tone="muted">🥡 Takeout</Badge>
+          ) : null}
         </div>
 
         {item.rating != null ? (
@@ -64,7 +69,7 @@ export function RankedDishRow({
         <p className="font-bold text-tomato">{formatPrice(item)}</p>
         {pctBadge ? (
           <div className="mt-1">
-            <Badge tone={pctBadge.tone} size="xs">
+            <Badge tone={pctBadge.tone} size="xs" icon={pctBadge.icon}>
               {pctBadge.label}
             </Badge>
           </div>

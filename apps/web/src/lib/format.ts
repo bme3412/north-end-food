@@ -47,7 +47,7 @@ export function formatItemPctVsMedian(pct: number | null | undefined): string | 
   return `${rounded}% ${direction} median`;
 }
 
-export type PctBadge = { label: string; tone: "basil" | "tomato" | "muted" };
+export type PctBadge = { label: string; tone: "basil" | "tomato" | "muted"; icon: string | null };
 
 // Threshold wider than formatItemPctVsMedian's "At median" (rounds to 0)
 // because a badge needs a stable "nothing meaningful to report" band, not
@@ -57,10 +57,10 @@ const TYPICAL_PRICE_THRESHOLD = 5;
 
 export function formatPctBadge(pct: number | null | undefined): PctBadge | null {
   if (pct == null) return null;
-  if (Math.abs(pct) <= TYPICAL_PRICE_THRESHOLD) return { label: "Typical price", tone: "muted" };
+  if (Math.abs(pct) <= TYPICAL_PRICE_THRESHOLD) return { label: "Typical price", tone: "muted", icon: null };
   const rounded = Math.round(Math.abs(pct));
-  if (pct < 0) return { label: `${rounded}% below median`, tone: "basil" };
-  return { label: `${rounded}% above median`, tone: "tomato" };
+  if (pct < 0) return { label: `${rounded}% below median`, tone: "basil", icon: "↓" };
+  return { label: `${rounded}% above median`, tone: "tomato", icon: "↑" };
 }
 
 // Honest distance, not walk-time -- no routing/directions integration

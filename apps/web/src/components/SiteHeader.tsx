@@ -30,7 +30,7 @@ export function SiteHeader() {
         </Link>
         <div className="flex shrink-0 items-center gap-3">
           <nav className="flex shrink-0 items-center gap-1">
-            <HeaderTab href="/" icon="🗺️" label="Map" active={pathname === "/"} />
+            <HeaderTab href="/" icon="🔍" label="Search" active={pathname === "/"} />
             <HeaderTab
               href="/restaurants"
               icon="🏪"
@@ -60,8 +60,10 @@ function HeaderTab({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${
-        active ? "bg-ink text-linen" : "text-muted hover:bg-linen-2 hover:text-ink"
+      className={`flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+        active
+          ? "border-tomato text-tomato"
+          : "border-transparent text-muted hover:border-line hover:text-ink"
       }`}
     >
       <span aria-hidden="true">{icon}</span>

@@ -33,7 +33,8 @@ export function PriceDistributionPanel({ group }: { group: DishGroup }) {
       </div>
 
       {savePct != null && savePct > 0 ? (
-        <p className="mt-3 rounded-xl bg-basil-soft px-3 py-2 text-sm text-basil">
+        <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-basil-soft px-3 py-2 text-sm text-basil">
+          <span aria-hidden="true">📶</span>
           You can save {savePct}% by choosing the lowest-priced option.
         </p>
       ) : null}
@@ -41,28 +42,35 @@ export function PriceDistributionPanel({ group }: { group: DishGroup }) {
       {buckets.length ? (
         <div className="mt-5">
           <p className="text-xs font-bold uppercase tracking-wide text-muted">Price distribution</p>
-          <div className="mt-3 flex items-end gap-1.5">
-            {buckets.map((bucket) => {
-              const heightPct = maxCount ? Math.max(6, Math.round((bucket.count / maxCount) * 100)) : 0;
-              return (
-                <div key={bucket.start} className="flex flex-1 flex-col items-center gap-1.5">
-                  <div className="flex h-28 w-full items-end">
-                    <div
-                      className="w-full rounded-t-md"
-                      style={{
-                        height: `${heightPct}%`,
-                        backgroundColor:
-                          bucket.count === 0
-                            ? "var(--linen-2)"
-                            : `color-mix(in srgb, var(--tomato) ${20 + (bucket.count / maxCount) * 60}%, var(--card))`,
-                      }}
-                      title={`${formatDollars(bucket.start)}: ${bucket.count} dish${bucket.count === 1 ? "" : "es"}`}
-                    />
+          <div className="mt-3 flex items-end gap-2">
+            <div className="flex h-28 flex-col justify-between text-right text-[0.65rem] text-muted">
+              <span>{maxCount}</span>
+              <span>{Math.round(maxCount / 2)}</span>
+              <span>0</span>
+            </div>
+            <div className="flex flex-1 items-end gap-1.5 border-l border-line pl-2">
+              {buckets.map((bucket) => {
+                const heightPct = maxCount ? Math.max(6, Math.round((bucket.count / maxCount) * 100)) : 0;
+                return (
+                  <div key={bucket.start} className="flex flex-1 flex-col items-center gap-1.5">
+                    <div className="flex h-28 w-full items-end">
+                      <div
+                        className="w-full rounded-t-md"
+                        style={{
+                          height: `${heightPct}%`,
+                          backgroundColor:
+                            bucket.count === 0
+                              ? "var(--linen-2)"
+                              : `color-mix(in srgb, var(--tomato) ${20 + (bucket.count / maxCount) * 60}%, var(--card))`,
+                        }}
+                        title={`${formatDollars(bucket.start)}: ${bucket.count} dish${bucket.count === 1 ? "" : "es"}`}
+                      />
+                    </div>
+                    <span className="text-[0.65rem] text-muted">${bucket.start}</span>
                   </div>
-                  <span className="text-[0.65rem] text-muted">${bucket.start}</span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}
