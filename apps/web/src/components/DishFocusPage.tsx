@@ -157,8 +157,8 @@ export function DishFocusPage({
   const selectedItem = restaurantItems.find((item) => item.restaurant_id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-2.5 py-3">
-      <div className="mb-2 grid grid-cols-2 rounded-lg bg-linen-2 p-1 lg:hidden">
+    <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5">
+      <div className="mb-3 grid grid-cols-2 rounded-lg bg-linen-2 p-1 lg:hidden">
         {(["list", "map"] as const).map((view) => (
           <button
             key={view}
@@ -168,15 +168,15 @@ export function DishFocusPage({
               mobileView === view ? "bg-card text-ink shadow-sm" : "text-muted"
             }`}
           >
-            {view === "list" ? `Dishes (${restaurantItems.length})` : "Map & insights"}
+            {view === "list" ? `Dishes (${restaurantItems.length})` : "Map & prices"}
           </button>
         ))}
       </div>
-      <div className="grid gap-2.5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
-        <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:flex`}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+        <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
           <DishSummaryCard group={group} />
 
-          <div className="flex h-7 items-center justify-between px-1">
+          <div className="flex h-8 items-center justify-between px-1">
             <h2 className="text-[11px] font-semibold text-ink">
               {group.restaurantCount} restaurant{group.restaurantCount === 1 ? "" : "s"} serve {group.displayName}
             </h2>
@@ -205,7 +205,7 @@ export function DishFocusPage({
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             {restaurantItems.map((item, index) => {
               // `visibleItems` is always a prefix of `restaurantItems` (either
               // the whole thing or its first TOP_SLICE), so the map index
@@ -226,8 +226,8 @@ export function DishFocusPage({
           </div>
         </div>
 
-        <div className={`${mobileView === "map" ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:-mt-4 lg:flex lg:gap-0`}>
-          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line lg:h-[256px]">
+        <div className={`${mobileView === "map" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
+          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line">
             <MapView
               places={places}
               ranks={ranks}

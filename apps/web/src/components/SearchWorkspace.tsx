@@ -89,35 +89,15 @@ export function SearchWorkspace() {
   const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
 
-  // A search that clearly resolves to one dish across multiple restaurants
-  // (e.g. "calamari") gets the dish-comparison layout instead of the
-  // general browse shell below -- see DishFocusPage. Anything broader
-  // (no search, or results spanning multiple dishes) keeps the existing,
-  // unmodified fixed sidebar+map shell; this branch is additive, not a
-  // replacement.
-  //
-  // Requiring `grouped.length === 1` was too strict in practice: the
-  // backend's search matches ingredient/description text as well as dish
-  // names (see app/search.py's `_token_clause`), so a query like
-  // "calamari" also pulls in dishes where calamari is just one listed
-  // ingredient (Frutti di Mare, Cioppino) plus every not-yet-canonicalized
-  // "Calamari ___" variant as its own singleton group -- `grouped.length`
-  // is never 1 for that query even though there's an obvious dish the
-  // searcher meant. We therefore look for a clear count leader: the top group
-  // needs at least 2x the runner-up's restaurant count (or no runner-up at
-  // all) to count as "dominant" -- verified against real queries: calamari
-  // (18 vs. runner-up 8) triggers; broader multi-dish searches like
-  // "pasta" (11 vs. 10) or "vegetarian" (5 vs. 4), where no single dish
-  // actually leads, correctly don't. Display groups retain API relevance
-  // order, so the count ordering used for this gate is computed locally.
-  const DOMINANCE_RATIO = 2;
-  const dominantGroup = useMemo(() => {
-    if (!hasActiveSearch || selectedPlaceId || grouped.length === 0) return null;
-    const [top, runnerUp] = [...grouped].sort((a, b) => b.restaurantCount - a.restaurantCount);
-    if (top.restaurantCount < 2) return null;
-    if (runnerUp && top.restaurantCount < runnerUp.restaurantCount * DOMINANCE_RATIO) return null;
-    return top;
-  }, [hasActiveSearch, selectedPlaceId, grouped]);
+  // Text search is intent-first: groupItemsByDish preserves the API's
+  // relevance order, so the first group is the best interpretation of the
+  // query. Use it for the comparison dashboard even when the query also
+  // returns related dishes. Empty/structured-filter browsing keeps the
+  // general dishes-and-map workspace below.
+  const focusGroup = useMemo(() => {
+    if (!filters.q.trim() || selectedPlaceId || grouped.length === 0) return null;
+    return grouped[0];
+  }, [filters.q, selectedPlaceId, grouped]);
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
@@ -140,7 +120,7 @@ export function SearchWorkspace() {
     return withMetric.map((entry) => entry.place);
   }, [places, restaurantSort]);
 
-  if (dominantGroup) {
+  if (focusGroup) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)]">
         <div className="border-b border-line">
@@ -160,7 +140,7 @@ export function SearchWorkspace() {
           </p>
         ) : (
           <DishFocusPage
-            group={dominantGroup}
+            group={focusGroup}
             onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
           />
         )}
