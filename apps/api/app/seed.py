@@ -91,7 +91,17 @@ def add_restaurants(db: Session, rows: list[dict], *, skip_existing: bool = Fals
         for item in items:
             db.add(
                 MenuItem(
-                    menu_item_id=_stable_uuid(restaurant.restaurant_id, snapshot.menu_snapshot_id, item["raw_name"]),
+                    # Section + price disambiguate real menus where the same
+                    # dish name recurs (lunch/dinner variants, size options,
+                    # e.g. Panza's small/large Fried Calamari) -- raw_name
+                    # alone isn't a unique key within a restaurant's items.
+                    menu_item_id=_stable_uuid(
+                        restaurant.restaurant_id,
+                        snapshot.menu_snapshot_id,
+                        item["raw_name"],
+                        str(item.get("menu_section")),
+                        str(item.get("raw_price_text")),
+                    ),
                     menu_snapshot_id=snapshot.menu_snapshot_id,
                     restaurant_id=restaurant.restaurant_id,
                     **item,
