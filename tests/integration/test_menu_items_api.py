@@ -54,6 +54,15 @@ def test_restaurant_scoped_search(client):
     assert body["places"][0]["restaurant_id"] == "NE_0002"
 
 
+def test_restaurant_photo_propagates_to_items_and_places(client):
+    response = client.get("/menu-items", params={"restaurant_id": "NE_0003"})
+    body = response.json()
+    assert body["items"]
+    expected = "/restaurant-photos/pizzeria-regina.jpg"
+    assert all(item["photo_url"] == expected for item in body["items"])
+    assert body["places"][0]["photo_url"] == expected
+
+
 def test_meta_reflects_seeded_data(client):
     response = client.get("/menu-items/meta")
     body = response.json()

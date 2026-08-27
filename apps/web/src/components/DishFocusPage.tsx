@@ -7,7 +7,7 @@ import { DishSummaryCard } from "@/components/DishSummaryCard";
 import { PriceDistributionPanel } from "@/components/PriceDistributionPanel";
 import { RankedDishRow } from "@/components/RankedDishRow";
 import { SimilarDishesCarousel } from "@/components/SimilarDishesCarousel";
-import type { DishGroup } from "@/lib/dishGroups";
+import { oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import { NORTH_END_CENTER, haversineMiles } from "@/lib/geo";
 import type { MenuItem, PlaceMatch } from "@/lib/types";
 
@@ -51,15 +51,18 @@ function itemToPlaceMatch(item: MenuItem): PlaceMatch {
   };
 }
 
-// One quality badge per restaurant, at most -- "Best value" is always the
-// cheapest item (rank 1, since group.items is already price-sorted by
-// groupItemsByDish), "Top rated" only exists at all once >=1 item has a
+// One quality badge per restaurant, at most -- "Best value" is the
+// cheapest priced item, while "Top rated" only exists once >=1 item has a
 // non-null rating (never true today -- no restaurant has Google Places
 // data linked yet), and "Great option" is a fallback for anything else at
 // or below the North End median that isn't already tagged.
 function assignQualityBadges(items: MenuItem[]): Map<string, string> {
   const badges = new Map<string, string>();
-  const cheapest = items.find((item) => item.price != null);
+  const cheapest = items.reduce<MenuItem | null>((current, item) => {
+    if (item.price == null) return current;
+    if (current?.price == null) return item;
+    return Number(item.price) < Number(current.price) ? item : current;
+  }, null);
   if (cheapest) badges.set(cheapest.menu_item_id, "Best value");
 
   const rated = items.filter((item) => item.rating != null);
@@ -107,8 +110,8 @@ export function DishFocusPage({
     return map;
   }, [group.items]);
 
-  // `group.items` arrives price-sorted (today's "rank"/"Best match" order).
-  // Re-sorting only reorders a copy -- items missing the sort field (no
+  // `group.items` retains the API's intent-first "Best match" order.
+  // Explicit sorts reorder only a copy -- items missing the sort field (no
   // price, no resolvable distance) sink to the end rather than being
   // dropped, so switching sort never hides a restaurant.
   const sortedItems = useMemo(() => {
@@ -136,14 +139,7 @@ export function DishFocusPage({
   // active). Without this, a restaurant with 2 items renders as 2 map
   // markers sharing one key (React duplicate-key warning) and 2 rows in
   // an "N restaurants" list.
-  const restaurantItems = useMemo(() => {
-    const seen = new Set<string>();
-    return sortedItems.filter((item) => {
-      if (seen.has(item.restaurant_id)) return false;
-      seen.add(item.restaurant_id);
-      return true;
-    });
-  }, [sortedItems]);
+  const restaurantItems = useMemo(() => oneItemPerRestaurant(sortedItems), [sortedItems]);
 
   const mapItems = showTop5 ? restaurantItems.slice(0, TOP_SLICE) : restaurantItems;
 

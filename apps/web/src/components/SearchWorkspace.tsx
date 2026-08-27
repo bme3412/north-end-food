@@ -103,17 +103,17 @@ export function SearchWorkspace() {
   // ingredient (Frutti di Mare, Cioppino) plus every not-yet-canonicalized
   // "Calamari ___" variant as its own singleton group -- `grouped.length`
   // is never 1 for that query even though there's an obvious dish the
-  // searcher meant. `grouped` is already sorted by restaurantCount desc
-  // (dishGroups.ts), so instead we look for a clear leader: the top group
+  // searcher meant. We therefore look for a clear count leader: the top group
   // needs at least 2x the runner-up's restaurant count (or no runner-up at
   // all) to count as "dominant" -- verified against real queries: calamari
   // (18 vs. runner-up 8) triggers; broader multi-dish searches like
   // "pasta" (11 vs. 10) or "vegetarian" (5 vs. 4), where no single dish
-  // actually leads, correctly don't.
+  // actually leads, correctly don't. Display groups retain API relevance
+  // order, so the count ordering used for this gate is computed locally.
   const DOMINANCE_RATIO = 2;
   const dominantGroup = useMemo(() => {
     if (!hasActiveSearch || selectedPlaceId || grouped.length === 0) return null;
-    const [top, runnerUp] = grouped;
+    const [top, runnerUp] = [...grouped].sort((a, b) => b.restaurantCount - a.restaurantCount);
     if (top.restaurantCount < 2) return null;
     if (runnerUp && top.restaurantCount < runnerUp.restaurantCount * DOMINANCE_RATIO) return null;
     return top;

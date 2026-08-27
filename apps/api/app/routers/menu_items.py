@@ -17,7 +17,7 @@ from app.queries import (
     latest_snapshot_ids,
     sibling_dishes,
 )
-from app.ranking import fuzzy_token_clause, relevance_order_by
+from app.ranking import balanced_secondary_score, fuzzy_token_clause, relevance_expressions
 from app.schemas import MenuItemList, MenuItemOut
 from app.schemas.menu import PlaceMatch, SimilarDishesOut, SimilarDishOut
 from app.search import parse_query
@@ -221,7 +221,6 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
                 delivery=first.delivery,
             )
         )
-    places.sort(key=lambda place: (-place.match_count, place.name))
     return places
 
 
@@ -349,32 +348,91 @@ def list_menu_items(
         parsed_max=parsed.max_price,
         parsed_dietary=parsed.dietary,
     )
+    intent_ranked = sort == "relevance" and bool(parsed.tokens)
     if sort == "name":
         stmt = stmt.order_by(MenuItem.raw_name)
     elif sort == "price":
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
-    elif parsed.tokens:
-        stmt = stmt.order_by(relevance_order_by(parsed.tokens, medians), MenuItem.price.nulls_last())
+    elif intent_ranked:
+        intent_tier, match_quality = relevance_expressions(parsed.tokens)
+        stmt = stmt.add_columns(
+            intent_tier.label("intent_tier"),
+            match_quality.label("match_quality"),
+        ).order_by(
+            intent_tier,
+            match_quality.desc(),
+            MenuItem.raw_name,
+            MenuItem.menu_item_id,
+        )
     else:
         stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
     rows = db.execute(stmt).all()
-    items = [
-        _to_out(item, snapshot, source, restaurant, medians, at_day=at_day, at_time=at_time, at_until=at_until)
-        for item, snapshot, source, restaurant in rows
-    ]
-    if open_now is not None:
-        # Computed per-restaurant from Restaurant.hours (app/hours.py), not
-        # a DB column -- filtered here in Python rather than in SQL, same
-        # as everywhere else this value is produced. Fine at this dataset
-        # size (order-preserving, no pagination to break).
-        items = [item for item in items if item.open_now == open_now]
-    if service_mode is not None:
-        # Exclude only a *confirmed* False from Google -- most restaurants
-        # won't have this populated yet (null), and treating "we don't
-        # know" the same as "no" would make the toggle look broken by
-        # hiding restaurants that likely do offer it.
-        flag = "takeout" if service_mode == "takeout" else "dine_in"
-        items = [item for item in items if getattr(item, flag) is not False]
+
+    ranked_items: list[tuple[MenuItemOut, int, float]] = []
+    if intent_ranked:
+        for item, snapshot, source, restaurant, intent_tier, match_quality in rows:
+            ranked_items.append(
+                (
+                    _to_out(
+                        item,
+                        snapshot,
+                        source,
+                        restaurant,
+                        medians,
+                        at_day=at_day,
+                        at_time=at_time,
+                        at_until=at_until,
+                    ),
+                    int(intent_tier),
+                    float(match_quality or 0),
+                )
+            )
+        items = [record[0] for record in ranked_items]
+    else:
+        items = [
+            _to_out(item, snapshot, source, restaurant, medians, at_day=at_day, at_time=at_time, at_until=at_until)
+            for item, snapshot, source, restaurant in rows
+        ]
+
+    def include_item(item: MenuItemOut) -> bool:
+        if open_now is not None and item.open_now != open_now:
+            return False
+        if service_mode is not None:
+            # Unknown service-mode data is retained; only a confirmed false
+            # excludes a restaurant.
+            flag = "takeout" if service_mode == "takeout" else "dine_in"
+            if getattr(item, flag) is False:
+                return False
+        return True
+
+    if intent_ranked:
+        ranked_items = [record for record in ranked_items if include_item(record[0])]
+
+        def rank_key(record: tuple[MenuItemOut, int, float]):
+            item, intent_tier, match_quality = record
+            secondary = balanced_secondary_score(
+                available=item.available,
+                open_now=item.open_now,
+                match_quality=match_quality,
+                rating=item.rating,
+                review_count=item.review_count,
+                pct_vs_median=item.pct_vs_median,
+                latitude=item.latitude,
+                longitude=item.longitude,
+            )
+            return (
+                intent_tier,
+                -secondary,
+                item.raw_name.lower(),
+                item.restaurant_name.lower(),
+                item.menu_item_id,
+            )
+
+        ranked_items.sort(key=rank_key)
+        items = [record[0] for record in ranked_items]
+    else:
+        items = [item for item in items if include_item(item)]
+
     return MenuItemList(
         total=len(items),
         items=items,

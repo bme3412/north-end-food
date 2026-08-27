@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
@@ -26,7 +27,14 @@ export function ItemCard({
         compact ? "p-3" : "p-4"
       }`}
     >
-      <button type="button" onClick={() => onOpen?.(item)} className="w-full text-left">
+      <div className="flex items-start gap-3">
+        <RestaurantPhoto
+          src={item.photo_url}
+          alt={item.restaurant_name}
+          className={`${compact ? "size-12" : "size-16"} shrink-0 rounded-lg object-cover`}
+        />
+        <div className="min-w-0 flex-1">
+        <button type="button" onClick={() => onOpen?.(item)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <h2
             className={`font-bold leading-snug text-ink ${
@@ -85,6 +93,8 @@ export function ItemCard({
           </span>
         </p>
       ) : null}
+        </div>
+      </div>
     </article>
   );
 }

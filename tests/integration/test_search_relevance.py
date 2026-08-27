@@ -49,6 +49,14 @@ def test_pizza_query_ranks_name_matches_above_category_only_matches(client):
     assert name_match_positions
     if other_positions:
         assert max(name_match_positions) < min(other_positions)
+    assert "pizza" in names[0].lower()
+
+
+def test_places_preserve_the_best_matching_item_order(client):
+    body = client.get("/menu-items", params={"q": "pizza"}).json()
+    assert body["items"]
+    assert body["places"]
+    assert body["places"][0]["restaurant_id"] == body["items"][0]["restaurant_id"]
 
 
 def test_italian_dish_name_query_finds_its_raw_text(client):
@@ -82,7 +90,7 @@ def test_category_and_price_combine_in_free_text(client):
     assert pasta_category_items
     for item in body["items"]:
         assert item["price"] is None or Decimal(item["price"]) <= Decimal("25")
-        haystack = f"{item['canonical_category']} {item['raw_description'] or ''}".lower()
+        haystack = f"{item['raw_name']} {item['canonical_category']} {item['raw_description'] or ''}".lower()
         assert "pasta" in haystack
 
 

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
+import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory, prettyDish } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
@@ -38,37 +39,44 @@ export function ItemSheet({
       />
       <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-2xl bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(23,27,32,0.18)]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-linen-2" />
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-2xl font-bold leading-tight">
-            {item.raw_name}
-          </h2>
-          <p className="shrink-0 text-xl font-bold text-tomato">{formatPrice(item)}</p>
-        </div>
-        {item.north_end_median_price != null && item.pct_vs_median != null ? (
-          <p className="mt-1 text-sm text-muted">
-            North End median: {formatDollars(item.north_end_median_price)}
-            {" · "}
-            <span className={item.pct_vs_median <= 0 ? "text-basil" : "text-tomato"}>
-              {formatItemPctVsMedian(item.pct_vs_median)}
-            </span>
-          </p>
-        ) : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Link
-            href={`/restaurants/${item.restaurant_id}`}
-            className="text-primary underline decoration-primary/30 underline-offset-4"
-          >
-            {item.restaurant_name}
-          </Link>
-          {item.open_now != null ? (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide ${
-                item.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
-              }`}
-            >
-              {item.open_now ? "Open now" : "Closed"}
-            </span>
-          ) : null}
+        <div className="flex items-start gap-3">
+          <RestaurantPhoto
+            src={item.photo_url}
+            alt={item.restaurant_name}
+            className="size-16 shrink-0 rounded-lg object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-2xl font-bold leading-tight">{item.raw_name}</h2>
+              <p className="shrink-0 text-xl font-bold text-tomato">{formatPrice(item)}</p>
+            </div>
+            {item.north_end_median_price != null && item.pct_vs_median != null ? (
+              <p className="mt-1 text-sm text-muted">
+                North End median: {formatDollars(item.north_end_median_price)}
+                {" · "}
+                <span className={item.pct_vs_median <= 0 ? "text-basil" : "text-tomato"}>
+                  {formatItemPctVsMedian(item.pct_vs_median)}
+                </span>
+              </p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Link
+                href={`/restaurants/${item.restaurant_id}`}
+                className="text-primary underline decoration-primary/30 underline-offset-4"
+              >
+                {item.restaurant_name}
+              </Link>
+              {item.open_now != null ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide ${
+                    item.open_now ? "bg-basil-soft text-basil" : "bg-tomato-soft text-tomato"
+                  }`}
+                >
+                  {item.open_now ? "Open now" : "Closed"}
+                </span>
+              ) : null}
+            </div>
+          </div>
         </div>
         {item.raw_description ? (
           <p className="mt-4 text-[1.05rem] leading-relaxed text-ink">{item.raw_description}</p>
