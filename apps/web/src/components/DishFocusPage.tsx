@@ -119,18 +119,37 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
     return withMetric.map((entry) => entry.item);
   }, [group.items, sortKey, distanceByItem]);
 
-  const visibleItems = showTop5 ? sortedItems.slice(0, TOP_SLICE) : sortedItems;
+  // A restaurant can serve more than one preparation of the same dish
+  // (e.g. two calamari items on one menu) -- `group.items` is per menu
+  // item, not per restaurant. Every downstream consumer here (the ranked
+  // list, the map's one-marker-per-place, "N restaurants serve X") is
+  // restaurant-scoped, so collapse to one representative item per
+  // restaurant_id here, keeping the first occurrence in the current sort
+  // order (its cheapest/nearest/best-ranked item, whichever sort is
+  // active). Without this, a restaurant with 2 items renders as 2 map
+  // markers sharing one key (React duplicate-key warning) and 2 rows in
+  // an "N restaurants" list.
+  const restaurantItems = useMemo(() => {
+    const seen = new Set<string>();
+    return sortedItems.filter((item) => {
+      if (seen.has(item.restaurant_id)) return false;
+      seen.add(item.restaurant_id);
+      return true;
+    });
+  }, [sortedItems]);
+
+  const visibleItems = showTop5 ? restaurantItems.slice(0, TOP_SLICE) : restaurantItems;
 
   const places = useMemo(() => visibleItems.map(itemToPlaceMatch), [visibleItems]);
   // Ranks follow the current sort order, not the original price order, so
   // the map pins and the list numbers always agree with what's on screen.
   const ranks = useMemo(() => {
     const map: Record<string, number> = {};
-    sortedItems.forEach((item, index) => {
+    restaurantItems.forEach((item, index) => {
       map[item.restaurant_id] = index + 1;
     });
     return map;
-  }, [sortedItems]);
+  }, [restaurantItems]);
 
   const selectedItem = visibleItems.find((item) => item.restaurant_id === selectedId) ?? null;
 
@@ -171,7 +190,7 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
 
           <div className="flex flex-col gap-3">
             {visibleItems.map((item, index) => {
-              // `visibleItems` is always a prefix of `sortedItems` (either
+              // `visibleItems` is always a prefix of `restaurantItems` (either
               // the whole thing or its first TOP_SLICE), so the map index
               // here doubles as the correct 1-based rank without a second
               // lookup, and stays consistent with the `ranks` map passed

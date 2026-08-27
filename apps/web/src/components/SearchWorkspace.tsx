@@ -93,10 +93,29 @@ export function SearchWorkspace() {
   // (no search, or results spanning multiple dishes) keeps the existing,
   // unmodified fixed sidebar+map shell; this branch is additive, not a
   // replacement.
-  const dominantGroup =
-    hasActiveSearch && !selectedPlaceId && grouped.length === 1 && grouped[0].restaurantCount >= 2
-      ? grouped[0]
-      : null;
+  //
+  // Requiring `grouped.length === 1` was too strict in practice: the
+  // backend's search matches ingredient/description text as well as dish
+  // names (see app/search.py's `_token_clause`), so a query like
+  // "calamari" also pulls in dishes where calamari is just one listed
+  // ingredient (Frutti di Mare, Cioppino) plus every not-yet-canonicalized
+  // "Calamari ___" variant as its own singleton group -- `grouped.length`
+  // is never 1 for that query even though there's an obvious dish the
+  // searcher meant. `grouped` is already sorted by restaurantCount desc
+  // (dishGroups.ts), so instead we look for a clear leader: the top group
+  // needs at least 2x the runner-up's restaurant count (or no runner-up at
+  // all) to count as "dominant" -- verified against real queries: calamari
+  // (18 vs. runner-up 8) triggers; broader multi-dish searches like
+  // "pasta" (11 vs. 10) or "vegetarian" (5 vs. 4), where no single dish
+  // actually leads, correctly don't.
+  const DOMINANCE_RATIO = 2;
+  const dominantGroup = useMemo(() => {
+    if (!hasActiveSearch || selectedPlaceId || grouped.length === 0) return null;
+    const [top, runnerUp] = grouped;
+    if (top.restaurantCount < 2) return null;
+    if (runnerUp && top.restaurantCount < runnerUp.restaurantCount * DOMINANCE_RATIO) return null;
+    return top;
+  }, [hasActiveSearch, selectedPlaceId, grouped]);
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
