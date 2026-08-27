@@ -15,10 +15,11 @@ from app.queries import (
     ingredient_match_clause,
     item_with_source_query,
     latest_snapshot_ids,
+    sibling_dishes,
 )
 from app.ranking import fuzzy_token_clause, relevance_order_by
 from app.schemas import MenuItemList, MenuItemOut
-from app.schemas.menu import PlaceMatch
+from app.schemas.menu import PlaceMatch, SimilarDishesOut, SimilarDishOut
 from app.search import parse_query
 
 router = APIRouter(prefix="/menu-items", tags=["menu-items"])
@@ -77,6 +78,7 @@ def _to_out(
         open_now=compute_open_status(restaurant.hours, at_day, at_time, at_until),
         hours_summary=format_hours_summary(restaurant.hours),
         rating=place_stats.rating if place_stats else None,
+        review_count=place_stats.review_count if place_stats else None,
         price_level=place_stats.price_level if place_stats else None,
         takeout=place_stats.takeout if place_stats else None,
         dine_in=place_stats.dine_in if place_stats else None,
@@ -192,6 +194,9 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
     for restaurant_id, group in grouped.items():
         first = group[0]
         priced = [item.price for item in group if item.price is not None]
+        # Cheapest item drives both `sample_name` and the vs-median badge --
+        # same item, so the two never point at different dishes.
+        cheapest = min(group, key=lambda item: (item.price is None, item.price or 0))
         places.append(
             PlaceMatch(
                 restaurant_id=restaurant_id,
@@ -203,11 +208,13 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
                 primary_cuisine=first.primary_cuisine,
                 match_count=len(group),
                 lowest_price=min(priced) if priced else None,
-                sample_name=min(group, key=lambda item: (item.price is None, item.price or 0)).raw_name,
+                lowest_price_pct_vs_median=cheapest.pct_vs_median,
+                sample_name=cheapest.raw_name,
                 photo_url=first.photo_url,
                 open_now=first.open_now,
                 hours_summary=first.hours_summary,
                 rating=first.rating,
+                review_count=first.review_count,
                 price_level=first.price_level,
                 takeout=first.takeout,
                 dine_in=first.dine_in,
@@ -267,6 +274,26 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
         "min_price": float(min(prices)) if prices else None,
         "max_price": float(max(prices)) if prices else None,
     }
+
+
+@router.get("/similar-dishes", response_model=SimilarDishesOut)
+def similar_dishes(
+    canonical_dish: str = Query(..., description="Canonical dish ID to find category-mates for, e.g. CALAMARI"),
+    limit: int = Query(8, ge=1, le=20),
+    db: Session = Depends(get_db),
+) -> SimilarDishesOut:
+    siblings = sibling_dishes(db, canonical_dish.upper(), limit=limit)
+    return SimilarDishesOut(
+        dishes=[
+            SimilarDishOut(
+                canonical_dish=sibling.canonical_dish_id,
+                canonical_name=sibling.canonical_name,
+                restaurant_count=sibling.restaurant_count,
+                median_price=sibling.median_price,
+            )
+            for sibling in siblings
+        ]
+    )
 
 
 @router.get("", response_model=MenuItemList)

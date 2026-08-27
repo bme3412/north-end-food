@@ -47,6 +47,31 @@ export function formatItemPctVsMedian(pct: number | null | undefined): string | 
   return `${rounded}% ${direction} median`;
 }
 
+export type PctBadge = { label: string; tone: "basil" | "tomato" | "muted" };
+
+// Threshold wider than formatItemPctVsMedian's "At median" (rounds to 0)
+// because a badge needs a stable "nothing meaningful to report" band, not
+// just an exact tie -- a few restaurants a couple percent apart shouldn't
+// each get their own green/red badge.
+const TYPICAL_PRICE_THRESHOLD = 5;
+
+export function formatPctBadge(pct: number | null | undefined): PctBadge | null {
+  if (pct == null) return null;
+  if (Math.abs(pct) <= TYPICAL_PRICE_THRESHOLD) return { label: "Typical price", tone: "muted" };
+  const rounded = Math.round(Math.abs(pct));
+  if (pct < 0) return { label: `${rounded}% below median`, tone: "basil" };
+  return { label: `${rounded}% above median`, tone: "tomato" };
+}
+
+// Honest distance, not walk-time -- no routing/directions integration
+// exists anywhere in this codebase, only straight-line haversine. Labeling
+// it as a walk-time estimate would overstate what this actually measures.
+export function formatDistanceMiles(miles: number | null | undefined): string | null {
+  if (miles == null || !Number.isFinite(miles)) return null;
+  if (miles < 0.1) return "< 0.1 mi";
+  return `${miles.toFixed(1)} mi`;
+}
+
 export function prettyCategory(value: string | null | undefined): string {
   if (!value) return "";
   return value.replaceAll("_", " ");

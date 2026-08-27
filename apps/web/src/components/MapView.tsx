@@ -10,6 +10,7 @@ import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { formatPrice, formatPriceLevel, prettyCategory } from "@/lib/format";
 import { NORTH_END_CENTER } from "@/lib/geo";
+import { medalTone, MEDAL_TONE_CLASSES } from "@/lib/rank";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import type { MenuItem, PlaceMatch, RestaurantDetail } from "@/lib/types";
 
@@ -30,9 +31,24 @@ type MapViewProps = {
   selectedItems?: MenuItem[];
   onSelect: (place: PlaceMatch | null) => void;
   onOpenItem?: (item: MenuItem) => void;
+  // "ranked": used by DishFocusPage to show list rank instead of a cuisine
+  // icon, with medal coloring instead of open/closed coloring. `ranks`
+  // maps restaurant_id -> 1-based rank; a place missing from it (e.g.
+  // outside the current "Show top 5" slice) still renders, unranked.
+  // Default "cuisine" is today's exact, unmodified behavior.
+  variant?: "cuisine" | "ranked";
+  ranks?: Record<string, number>;
 };
 
-export default function MapView({ places, selectedId, selectedItems = [], onSelect, onOpenItem }: MapViewProps) {
+export default function MapView({
+  places,
+  selectedId,
+  selectedItems = [],
+  onSelect,
+  onOpenItem,
+  variant = "cuisine",
+  ranks,
+}: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -68,16 +84,30 @@ export default function MapView({ places, selectedId, selectedItems = [], onSele
       {mappable.map((place) => {
         const active = place.restaurant_id === selectedId;
         const closed = place.open_now === false;
-        const size = active ? 38 : 26 + Math.min(place.match_count, 4) * 2;
+        const rank = ranks?.[place.restaurant_id];
+        const ranked = variant === "ranked";
+        const size = active ? 38 : ranked ? 30 : 26 + Math.min(place.match_count, 4) * 2;
         // Color encodes open/closed status (from live-computed hours, see
-        // app/hours.py); content is a cuisine icon so a pin says something
-        // about the restaurant before you click it. Selection still
-        // overrides to tomato so the active pin stays unambiguous. A solid
-        // white ring (rather than a pointed pin shape) keeps overlapping
-        // markers in dense blocks (Salem/Hanover St) reading as stacked
-        // discs instead of merging into an amorphous blob.
-        const pinColor = active ? "bg-tomato text-linen" : closed ? "border-2 border-line bg-linen-2 text-muted" : "bg-ink text-linen";
-        const icon = active ? DEFAULT_ICON : (place.primary_cuisine && CUISINE_ICONS[place.primary_cuisine]) || DEFAULT_ICON;
+        // app/hours.py) in cuisine mode, or medal tone by rank in ranked
+        // mode; content is a cuisine icon (cuisine mode) or the list's rank
+        // number (ranked mode) so a pin says something about the
+        // restaurant before you click it. Selection still overrides to
+        // tomato so the active pin stays unambiguous. A solid white ring
+        // (rather than a pointed pin shape) keeps overlapping markers in
+        // dense blocks (Salem/Hanover St) reading as stacked discs instead
+        // of merging into an amorphous blob.
+        const pinColor = active
+          ? "bg-tomato text-linen"
+          : closed
+            ? "border-2 border-line bg-linen-2 text-muted"
+            : ranked
+              ? MEDAL_TONE_CLASSES[medalTone(rank ?? 0)]
+              : "bg-ink text-linen";
+        const icon = ranked
+          ? (rank != null ? String(rank) : "•")
+          : active
+            ? DEFAULT_ICON
+            : (place.primary_cuisine && CUISINE_ICONS[place.primary_cuisine]) || DEFAULT_ICON;
         const hovered = hoveredId === place.restaurant_id;
         return (
           <Marker
@@ -120,7 +150,12 @@ export default function MapView({ places, selectedId, selectedItems = [], onSele
                 className={`flex items-center justify-center rounded-full shadow-md ring-2 transition-transform ${pinColor} ${
                   active ? "scale-110" : "hover:scale-105"
                 } ${hovered && !active ? "ring-tomato" : "ring-linen"}`}
-                style={{ width: size, height: size, fontSize: active ? 16 : 12 }}
+                style={{
+                  width: size,
+                  height: size,
+                  fontSize: active ? 16 : ranked ? 13 : 12,
+                  fontWeight: ranked ? 700 : undefined,
+                }}
               >
                 <span aria-hidden="true">{icon}</span>
               </button>

@@ -5,6 +5,8 @@ from app.schemas.menu import (
     RestaurantDetail,
     RestaurantExternalIdOut,
     RestaurantSummary,
+    SimilarDishesOut,
+    SimilarDishOut,
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "RestaurantDetail",
     "RestaurantExternalIdOut",
     "RestaurantSummary",
+    "SimilarDishesOut",
+    "SimilarDishOut",
 ]

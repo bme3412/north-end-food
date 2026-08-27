@@ -140,6 +140,64 @@ def dish_and_category_medians(db: Session) -> DishCategoryMedians:
     )
 
 
+@dataclass(frozen=True)
+class SiblingDish:
+    canonical_dish_id: str
+    canonical_name: str
+    restaurant_count: int
+    median_price: Decimal | None
+
+
+def sibling_dishes(db: Session, canonical_dish: str, *, limit: int = 8) -> list[SiblingDish]:
+    """Other dishes in the same broad category as `canonical_dish` (e.g.
+    Calamari -> Octopus, Cioppino, Lobster Roll, Oysters, all `category:
+    seafood`) -- powers the "similar dishes you might like" carousel.
+    Grouped by `category`, not the narrower `subcategory`: several
+    subcategories in seed_data.py have exactly one dish each, which would
+    make the carousel empty for those far more often than category-level
+    grouping does. Same aggregation shape as dish_and_category_medians()
+    above (latest snapshot, priced non-market-price rows, Python-side
+    statistics.median) rather than a second, divergent way of computing a
+    median -- see that function's docstring.
+    """
+    dish = db.get(CanonicalDish, canonical_dish)
+    if dish is None or not dish.category:
+        return []
+
+    latest = latest_snapshot_ids(db).subquery()
+    rows = db.execute(
+        select(MenuItem.canonical_dish, MenuItem.restaurant_id, MenuItem.price, CanonicalDish.canonical_name)
+        .join(CanonicalDish, MenuItem.canonical_dish == CanonicalDish.canonical_dish_id)
+        .where(
+            CanonicalDish.category == dish.category,
+            MenuItem.canonical_dish != canonical_dish,
+            MenuItem.menu_snapshot_id.in_(select(latest)),
+            MenuItem.price.is_not(None),
+            MenuItem.market_price.is_(False),
+        )
+    ).all()
+
+    by_sibling: dict[str, dict] = {}
+    for sibling_id, restaurant_id, price, canonical_name in rows:
+        entry = by_sibling.setdefault(
+            sibling_id, {"canonical_name": canonical_name, "restaurant_ids": set(), "prices": []}
+        )
+        entry["restaurant_ids"].add(restaurant_id)
+        entry["prices"].append(price)
+
+    siblings = [
+        SiblingDish(
+            canonical_dish_id=sibling_id,
+            canonical_name=entry["canonical_name"],
+            restaurant_count=len(entry["restaurant_ids"]),
+            median_price=_median(entry["prices"]),
+        )
+        for sibling_id, entry in by_sibling.items()
+    ]
+    siblings.sort(key=lambda sibling: (-sibling.restaurant_count, sibling.canonical_name))
+    return siblings[:limit]
+
+
 def price_profile(db: Session, restaurant_id: str, *, top_categories: int = 3) -> PriceProfile:
     """Median item price for a restaurant vs. the North End as a whole, priced items only."""
     latest = latest_snapshot_ids(db).subquery()

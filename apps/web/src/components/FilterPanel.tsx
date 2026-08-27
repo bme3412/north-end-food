@@ -3,11 +3,21 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+import { useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { prettyCategory } from "@/lib/format";
 import type { FilterState } from "@/lib/filters";
 import { DEFAULT_FILTERS } from "@/lib/filters";
+import { useServiceMode } from "@/lib/serviceMode";
 import type { FilterMeta } from "@/lib/types";
+
+// Real, clickable examples (each one sets `filters.q`), not decorative
+// text -- picked to showcase the natural-language price/filter parsing
+// (see app/routers/menu_items.py's query parsing) alongside a plain dish
+// and a plain restaurant name search.
+const SUGGESTED_QUERIES = ["lobster ravioli under $35", "pasta open now", "vegetarian", "Neptune Oyster"];
+
+const UNDER_THIRTY = "30";
 
 type FilterPanelProps = {
   filters: FilterState;
@@ -53,8 +63,8 @@ export function FilterPanel({
 
   return (
     <div className="bg-card/80 p-5 backdrop-blur-sm">
-      <div className="flex items-center gap-2">
-        <label className="relative block min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="relative block min-w-0 flex-1 basis-64">
           <span className="sr-only">Search menus</span>
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted" aria-hidden="true">
             🔍
@@ -77,20 +87,24 @@ export function FilterPanel({
             </button>
           ) : null}
         </label>
-        <button
-          type="button"
-          onClick={onToggleExpanded}
-          aria-label={expanded ? "Hide filters" : "More filters"}
-          aria-pressed={expanded}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-lg ${
-            expanded ? "border-ink bg-ink text-linen" : "border-line bg-linen text-ink"
-          }`}
-        >
-          <span aria-hidden="true">⚙︎</span>
-        </button>
+        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted">
+          <span className="shrink-0">Try:</span>
+          {SUGGESTED_QUERIES.map((query) => (
+            <button
+              key={query}
+              type="button"
+              onClick={() => set("q", query)}
+              className="rounded-full border border-line bg-linen px-2.5 py-1 text-ink hover:bg-linen-2"
+            >
+              &ldquo;{query}&rdquo;
+            </button>
+          ))}
+        </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <FilterChipRow filters={filters} onChange={onChange} onToggleExpanded={onToggleExpanded} expanded={expanded} />
+
+      <div className="mt-3 flex flex-wrap gap-2">
         {(meta?.categories ?? [])
           .filter((category) => FEATURED_CATEGORIES.includes(category))
           .map((category) => {
@@ -234,6 +248,115 @@ export function FilterPanel({
         </div>
       ) : null}
     </div>
+  );
+}
+
+const SORT_LABELS: Record<FilterState["sort"], string> = {
+  relevance: "Best match",
+  price: "Lowest price",
+  name: "Name",
+};
+
+// The quick-access row from the mockup: sort, open-now, dine-in/takeout,
+// a one-tap price cap, and the trigger for the full filter drawer below.
+// Reads/writes the same shared contexts the header does (useAsOfTime,
+// useServiceMode) so toggling here and toggling in the header always agree
+// -- there's exactly one source of truth for each, just two places to
+// reach it from.
+function FilterChipRow({
+  filters,
+  onChange,
+  expanded,
+  onToggleExpanded,
+}: {
+  filters: FilterState;
+  onChange: (next: FilterState) => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+}) {
+  const { openNowEnabled, setOpenNowEnabled } = useAsOfTime();
+  const { mode, setMode } = useServiceMode();
+  const underThirty = filters.maxPrice === UNDER_THIRTY;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <label className="relative">
+        <span className="sr-only">Sort</span>
+        <select
+          value={filters.sort}
+          onChange={(event) => onChange({ ...filters, sort: event.target.value as FilterState["sort"] })}
+          className="appearance-none rounded-full bg-ink py-1.5 pl-3.5 pr-7 text-sm font-medium text-linen outline-none"
+        >
+          {(Object.keys(SORT_LABELS) as FilterState["sort"][]).map((value) => (
+            <option key={value} value={value}>
+              {SORT_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[0.6rem] text-linen"
+        >
+          ▾
+        </span>
+      </label>
+
+      <ChipToggle active={openNowEnabled} onClick={() => setOpenNowEnabled(!openNowEnabled)}>
+        <span
+          aria-hidden="true"
+          className={`size-2 rounded-full ${openNowEnabled ? "bg-basil" : "bg-muted/40"}`}
+        />
+        Open now
+      </ChipToggle>
+
+      <ChipToggle active={mode === "dine-in"} onClick={() => setMode("dine-in")}>
+        <span aria-hidden="true">🍴</span> Dine-in
+      </ChipToggle>
+      <ChipToggle active={mode === "takeout"} onClick={() => setMode("takeout")}>
+        <span aria-hidden="true">🥡</span> Takeout
+      </ChipToggle>
+
+      <ChipToggle
+        active={underThirty}
+        onClick={() => onChange({ ...filters, maxPrice: underThirty ? "" : UNDER_THIRTY })}
+      >
+        <span aria-hidden="true">🏷️</span> Under $30
+      </ChipToggle>
+
+      <button
+        type="button"
+        onClick={onToggleExpanded}
+        aria-expanded={expanded}
+        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
+          expanded ? "border-ink bg-ink text-linen" : "border-line bg-linen text-ink hover:bg-linen-2"
+        }`}
+      >
+        <span aria-hidden="true">⚙︎</span> More filters
+      </button>
+    </div>
+  );
+}
+
+function ChipToggle({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
+        active ? "border-basil/30 bg-basil-soft text-basil" : "border-line bg-linen text-ink hover:bg-linen-2"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

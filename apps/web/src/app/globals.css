@@ -11,6 +11,14 @@
   --tomato-soft: #f3d4c8;
   --basil: #3d6b4a;
   --basil-soft: #d7e4d6;
+  --info: #2a5d8f;
+  --info-soft: #d8e6f2;
+  --gold: #9a7317;
+  --gold-soft: #f1e2b8;
+  --silver: #5b6470;
+  --silver-soft: #e2e5e9;
+  --bronze: #954f24;
+  --bronze-soft: #ecdac7;
 }
 
 @theme inline {
@@ -24,6 +32,14 @@
   --color-tomato-soft: var(--tomato-soft);
   --color-basil: var(--basil);
   --color-basil-soft: var(--basil-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-silver: var(--silver);
+  --color-silver-soft: var(--silver-soft);
+  --color-bronze: var(--bronze);
+  --color-bronze-soft: var(--bronze-soft);
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-atkinson);
 }

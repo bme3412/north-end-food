@@ -101,6 +101,7 @@ export type MenuItem = {
   open_now: boolean | null;
   hours_summary: string | null;
   rating: string | null;
+  review_count: number | null;
   price_level: number | null;
   takeout: boolean | null;
   dine_in: boolean | null;
@@ -127,11 +128,13 @@ export type PlaceMatch = {
   primary_cuisine: string | null;
   match_count: number;
   lowest_price: string | null;
+  lowest_price_pct_vs_median: number | null;
   sample_name: string;
   photo_url: string | null;
   open_now: boolean | null;
   hours_summary: string | null;
   rating: string | null;
+  review_count: number | null;
   price_level: number | null;
   takeout: boolean | null;
   dine_in: boolean | null;
@@ -143,6 +146,17 @@ export type MenuItemList = {
   items: MenuItem[];
   places: PlaceMatch[];
   parsed_tokens: string[];
+};
+
+export type SimilarDish = {
+  canonical_dish: string;
+  canonical_name: string;
+  restaurant_count: number;
+  median_price: string | null;
+};
+
+export type SimilarDishesResponse = {
+  dishes: SimilarDish[];
 };
 
 export type FilterMeta = {

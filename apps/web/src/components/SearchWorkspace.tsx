@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { DishFocusPage } from "@/components/DishFocusPage";
 import { DishGroupCard } from "@/components/DishGroupCard";
 import { FilterPanel } from "@/components/FilterPanel";
 import { ItemCard } from "@/components/ItemCard";
@@ -86,6 +87,17 @@ export function SearchWorkspace() {
   const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
 
+  // A search that clearly resolves to one dish across multiple restaurants
+  // (e.g. "calamari") gets the dish-comparison layout instead of the
+  // general browse shell below -- see DishFocusPage. Anything broader
+  // (no search, or results spanning multiple dishes) keeps the existing,
+  // unmodified fixed sidebar+map shell; this branch is additive, not a
+  // replacement.
+  const dominantGroup =
+    hasActiveSearch && !selectedPlaceId && grouped.length === 1 && grouped[0].restaurantCount >= 2
+      ? grouped[0]
+      : null;
+
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
     const withMetric = places.map((place) => {
@@ -106,6 +118,31 @@ export function SearchWorkspace() {
     });
     return withMetric.map((entry) => entry.place);
   }, [places, restaurantSort]);
+
+  if (dominantGroup) {
+    return (
+      <div className="min-h-[calc(100vh-3.5rem)]">
+        <div className="border-b border-line">
+          <FilterPanel
+            filters={filters}
+            meta={meta}
+            parsedTokens={parsedTokens}
+            onChange={setFilters}
+            expanded={filtersExpanded}
+            onToggleExpanded={() => setFiltersExpanded((open) => !open)}
+          />
+        </div>
+        {error ? (
+          <p className="mx-auto mt-6 max-w-7xl rounded-2xl bg-tomato-soft px-4 py-3 text-sm">
+            Can’t reach the API. {error}
+          </p>
+        ) : (
+          <DishFocusPage group={dominantGroup} />
+        )}
+        <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-14 flex flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">

@@ -126,6 +126,7 @@ class MenuItemOut(BaseModel):
     open_now: bool | None = None
     hours_summary: str | None = None
     rating: Decimal | None = None
+    review_count: int | None = None
     price_level: int | None = None
     takeout: bool | None = None
     dine_in: bool | None = None
@@ -152,11 +153,17 @@ class PlaceMatch(BaseModel):
     primary_cuisine: str | None = None
     match_count: int
     lowest_price: Decimal | None
+    # % vs. the same dish/category median as the cheapest item in this
+    # restaurant's group -- copied from MenuItemOut.pct_vs_median (which
+    # already has the correct market_price guard) rather than having
+    # callers recompute the comparison themselves.
+    lowest_price_pct_vs_median: float | None = None
     sample_name: str
     photo_url: str | None = None
     open_now: bool | None = None
     hours_summary: str | None = None
     rating: Decimal | None = None
+    review_count: int | None = None
     price_level: int | None = None
     takeout: bool | None = None
     dine_in: bool | None = None
@@ -168,3 +175,14 @@ class MenuItemList(BaseModel):
     items: list[MenuItemOut]
     places: list[PlaceMatch] = Field(default_factory=list)
     parsed_tokens: list[str] = Field(default_factory=list)
+
+
+class SimilarDishOut(BaseModel):
+    canonical_dish: str
+    canonical_name: str
+    restaurant_count: int
+    median_price: Decimal | None
+
+
+class SimilarDishesOut(BaseModel):
+    dishes: list[SimilarDishOut] = Field(default_factory=list)

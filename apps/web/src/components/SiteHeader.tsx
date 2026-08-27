@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
 import { useAsOfTime } from "@/lib/asOfTime";
-import { useServiceMode } from "@/lib/serviceMode";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -13,19 +12,33 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 h-14 border-b border-line bg-linen/90 backdrop-blur-md">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="min-w-0">
-          <p className="font-[family-name:var(--font-fraunces)] text-[1.35rem] font-medium leading-none tracking-tight text-ink">
-            North End Food
-          </p>
-          <p className="mt-1 text-[0.7rem] leading-none text-muted">Search menus on the map</p>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-base text-linen"
+          >
+            🍴
+          </span>
+          <span className="min-w-0">
+            <p className="truncate font-[family-name:var(--font-fraunces)] text-[1.2rem] font-medium leading-none tracking-tight text-ink">
+              North End Food
+            </p>
+            <p className="mt-1 hidden truncate text-[0.7rem] leading-none text-muted sm:block">
+              Find what to eat. Compare. Explore.
+            </p>
+          </span>
         </Link>
         <div className="flex shrink-0 items-center gap-3">
-          <nav className="flex shrink-0 items-center gap-4">
-            <HeaderTab href="/" label="Map" active={pathname === "/"} />
-            <HeaderTab href="/restaurants" label="Places" active={pathname?.startsWith("/restaurants") ?? false} />
+          <nav className="flex shrink-0 items-center gap-1">
+            <HeaderTab href="/" icon="🗺️" label="Map" active={pathname === "/"} />
+            <HeaderTab
+              href="/restaurants"
+              icon="🏪"
+              label="Restaurants"
+              active={pathname?.startsWith("/restaurants") ?? false}
+            />
           </nav>
-          <ServiceModeToggle />
-          <OpenNowCheckbox />
+          <OpenNowIndicator />
           <TimePreviewControl />
         </div>
       </div>
@@ -33,62 +46,51 @@ export function SiteHeader() {
   );
 }
 
-function HeaderTab({ href, label, active }: { href: string; label: string; active: boolean }) {
+function HeaderTab({
+  href,
+  icon,
+  label,
+  active,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  active: boolean;
+}) {
   return (
     <Link
       href={href}
-      className={`border-b-2 pb-1 pt-1 text-sm font-medium ${
-        active ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink"
+      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${
+        active ? "bg-ink text-linen" : "text-muted hover:bg-linen-2 hover:text-ink"
       }`}
     >
-      {label}
+      <span aria-hidden="true">{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
     </Link>
   );
 }
 
-function OpenNowCheckbox() {
+// Toggle, styled as the mockup's green-dot status pill rather than a plain
+// checkbox -- still the same `openNowEnabled` boolean from useAsOfTime,
+// read by the search query builder to actually filter results (see
+// SearchWorkspace.tsx).
+function OpenNowIndicator() {
   const { openNowEnabled, setOpenNowEnabled } = useAsOfTime();
 
   return (
-    <label className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-ink">
-      <input
-        type="checkbox"
-        checked={openNowEnabled}
-        onChange={(event) => setOpenNowEnabled(event.target.checked)}
-        className="size-4 rounded border-line"
+    <button
+      type="button"
+      onClick={() => setOpenNowEnabled(!openNowEnabled)}
+      aria-pressed={openNowEnabled}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
+        openNowEnabled ? "border-basil/30 bg-basil-soft text-basil" : "border-line bg-card text-muted"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`size-2 rounded-full ${openNowEnabled ? "bg-basil" : "bg-muted/40"}`}
       />
       <span className="hidden sm:inline">Open now</span>
-    </label>
-  );
-}
-
-// Filters results via the shared service-mode context (see
-// lib/serviceMode.tsx) -- picking Takeout excludes restaurants Google has
-// explicitly confirmed don't offer it, keeping everyone else (most
-// restaurants don't have an answer yet).
-function ServiceModeToggle() {
-  const { mode, setMode } = useServiceMode();
-
-  return (
-    <div className="hidden items-center gap-1 rounded-full bg-linen-2 p-1 sm:flex">
-      <button
-        type="button"
-        onClick={() => setMode("dine-in")}
-        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-          mode === "dine-in" ? "bg-card text-ink shadow-sm" : "text-muted"
-        }`}
-      >
-        <span aria-hidden="true">🍴</span> Dine-in
-      </button>
-      <button
-        type="button"
-        onClick={() => setMode("takeout")}
-        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
-          mode === "takeout" ? "bg-card text-ink shadow-sm" : "text-muted"
-        }`}
-      >
-        <span aria-hidden="true">🥡</span> Takeout
-      </button>
-    </div>
+    </button>
   );
 }
