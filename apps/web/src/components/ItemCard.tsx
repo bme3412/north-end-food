@@ -22,15 +22,15 @@ export function ItemCard({
 }) {
   return (
     <article
-      className={`rounded-2xl border border-line bg-card shadow-[0_1px_0_rgba(42,35,28,0.04)] ${
-        compact ? "p-3" : "rounded-3xl p-4"
+      className={`rounded-xl border border-line bg-card shadow-[0_1px_3px_rgba(23,27,32,0.04)] ${
+        compact ? "p-3" : "p-4"
       }`}
     >
       <button type="button" onClick={() => onOpen?.(item)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <h2
-            className={`font-[family-name:var(--font-fraunces)] font-medium leading-snug text-ink ${
-              compact ? "text-base" : "text-[1.35rem]"
+            className={`font-bold leading-snug text-ink ${
+              compact ? "text-sm" : "text-lg"
             }`}
           >
             {item.raw_name}

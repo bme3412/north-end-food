@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { Store, Utensils } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { DishFocusPage } from "@/components/DishFocusPage";
 import { DishGroupCard } from "@/components/DishGroupCard";
@@ -149,6 +151,7 @@ export function SearchWorkspace() {
             onChange={setFilters}
             expanded={filtersExpanded}
             onToggleExpanded={() => setFiltersExpanded((open) => !open)}
+            compact
           />
         </div>
         {error ? (
@@ -156,7 +159,10 @@ export function SearchWorkspace() {
             Can’t reach the API. {error}
           </p>
         ) : (
-          <DishFocusPage group={dominantGroup} />
+          <DishFocusPage
+            group={dominantGroup}
+            onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+          />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
       </div>
@@ -164,13 +170,8 @@ export function SearchWorkspace() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-14 flex flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">
-      {/* Sidebar: filters + results */}
-      <aside
-        className={`flex min-h-0 flex-col overflow-y-auto bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${
-          mobileTab === "list" ? "flex-1" : "hidden lg:flex"
-        }`}
-      >
+    <div className="fixed inset-x-0 bottom-0 top-[50px] flex flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-line">
         <FilterPanel
           filters={filters}
           meta={meta}
@@ -185,8 +186,17 @@ export function SearchWorkspace() {
           }}
           expanded={filtersExpanded}
           onToggleExpanded={() => setFiltersExpanded((open) => !open)}
+          compact
         />
+      </div>
 
+      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[clamp(480px,42vw,620px)_1fr]">
+        {/* Sidebar: results */}
+        <aside
+          className={`min-h-0 flex-col overflow-y-auto bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${
+            mobileTab === "list" ? "flex flex-1" : "hidden lg:flex"
+          }`}
+        >
         <div className="flex flex-col gap-3 border-t border-b border-line px-5 py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
@@ -245,7 +255,7 @@ export function SearchWorkspace() {
           ) : (
             <div className="flex flex-col gap-4">
               <SectionHeader
-                icon={groupByDish ? "🍴" : "🏪"}
+                icon={groupByDish ? <Utensils className="size-4" /> : <Store className="size-4" />}
                 label={
                   groupByDish
                     ? hasActiveSearch
@@ -291,24 +301,25 @@ export function SearchWorkspace() {
             </div>
           )}
         </div>
-      </aside>
+        </aside>
 
-      {/* Map column */}
-      <section
-        className={`relative min-h-0 bg-linen-2 lg:h-full ${
-          mobileTab === "map" ? "flex flex-1 flex-col" : "hidden lg:flex"
-        }`}
-      >
-        <div className="relative min-h-[42vh] flex-1 lg:min-h-0">
-          <MapView
-            places={places}
-            selectedId={selectedPlaceId}
-            selectedItems={visibleItems}
-            onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
-            onOpenItem={setSelectedItem}
-          />
-        </div>
-      </section>
+        {/* Map column */}
+        <section
+          className={`relative min-h-0 bg-linen-2 lg:h-full ${
+            mobileTab === "map" ? "flex flex-1 flex-col" : "hidden lg:flex"
+          }`}
+        >
+          <div className="relative min-h-[42vh] flex-1 lg:min-h-0">
+            <MapView
+              places={places}
+              selectedId={selectedPlaceId}
+              selectedItems={visibleItems}
+              onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
+              onOpenItem={setSelectedItem}
+            />
+          </div>
+        </section>
+      </div>
 
       {/* Mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-card/95 backdrop-blur-md lg:hidden">
@@ -325,7 +336,7 @@ export function SearchWorkspace() {
   );
 }
 
-function SectionHeader({ icon, label }: { icon: string; label: string }) {
+function SectionHeader({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <span aria-hidden="true">{icon}</span>

@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Map, { FullscreenControl, Marker, NavigationControl, ScaleControl } from "react-map-gl/mapbox";
+import Map, {
+  FullscreenControl,
+  GeolocateControl,
+  Marker,
+  NavigationControl,
+  ScaleControl,
+  type MapRef,
+} from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { getRestaurant, listMenuItems } from "@/lib/api";
@@ -10,7 +17,6 @@ import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { formatPrice, formatPriceLevel, prettyCategory } from "@/lib/format";
 import { NORTH_END_CENTER } from "@/lib/geo";
-import { medalTone, MEDAL_TONE_CLASSES } from "@/lib/rank";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import type { MenuItem, PlaceMatch, RestaurantDetail } from "@/lib/types";
 
@@ -51,11 +57,29 @@ export default function MapView({
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const mappable = useMemo(
     () => places.filter((place) => place.latitude != null && place.longitude != null),
     [places],
   );
+
+  useEffect(() => {
+    if (!mapRef.current || mappable.length < 2) return;
+    const longitudes = mappable.map((place) => place.longitude!);
+    const latitudes = mappable.map((place) => place.latitude!);
+    mapRef.current.fitBounds(
+      [
+        [Math.min(...longitudes), Math.min(...latitudes)],
+        [Math.max(...longitudes), Math.max(...latitudes)],
+      ],
+      {
+        padding: variant === "ranked" ? 48 : 80,
+        maxZoom: 16,
+        duration: 0,
+      },
+    );
+  }, [mappable, variant]);
 
   if (!token) {
     return (
@@ -73,6 +97,7 @@ export default function MapView({
 
   return (
     <Map
+      ref={mapRef}
       mapboxAccessToken={token}
       initialViewState={NORTH_END}
       mapStyle="mapbox://styles/mapbox/streets-v12"
@@ -80,7 +105,8 @@ export default function MapView({
       attributionControl={false}
       onClick={() => onSelect(null)}
     >
-      <NavigationControl position="top-right" showCompass={false} />
+      <NavigationControl position="bottom-right" showCompass={false} />
+      <GeolocateControl position="bottom-right" showUserHeading trackUserLocation={false} />
       <FullscreenControl position="top-right" />
       <ScaleControl position="bottom-left" unit="imperial" />
       {mappable.map((place) => {
@@ -88,7 +114,7 @@ export default function MapView({
         const closed = place.open_now === false;
         const rank = ranks?.[place.restaurant_id];
         const ranked = variant === "ranked";
-        const size = active ? 38 : ranked ? 30 : 26 + Math.min(place.match_count, 4) * 2;
+        const size = active ? 30 : ranked ? 24 : 24 + Math.min(place.match_count, 4) * 2;
         // Color encodes open/closed status (from live-computed hours, see
         // app/hours.py) in cuisine mode, or medal tone by rank in ranked
         // mode; content is a cuisine icon (cuisine mode) or the list's rank
@@ -103,8 +129,8 @@ export default function MapView({
           : closed
             ? "border-2 border-line bg-linen-2 text-muted"
             : ranked
-              ? MEDAL_TONE_CLASSES[medalTone(rank ?? 0)]
-              : "bg-ink text-linen";
+              ? "bg-ink text-white"
+              : "bg-ink text-white";
         const icon = ranked
           ? (rank != null ? String(rank) : "•")
           : active
@@ -116,7 +142,7 @@ export default function MapView({
             key={place.restaurant_id}
             latitude={place.latitude!}
             longitude={place.longitude!}
-            anchor="center"
+            anchor={ranked ? "bottom" : "center"}
             // Overlapping markers in dense blocks (Salem/Hanover St) meant
             // whichever pin happened to render later in the list sat on
             // top regardless of hover/selection -- a hovered pin's own
@@ -137,30 +163,38 @@ export default function MapView({
             >
               {ranked || (hovered && !active) || active ? (
                 <span
-                  className={`pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold shadow-lg ${
-                    active ? "border border-line bg-card text-ink" : "bg-ink text-linen"
+                  className={`pointer-events-none absolute bottom-full mb-1 whitespace-nowrap rounded-md px-1.5 py-1 text-[8px] font-semibold shadow-sm ${
+                    active ? "border border-line bg-card text-ink" : "bg-card/95 text-ink"
                   }`}
                 >
                   {place.name}
                 </span>
               ) : null}
-              <button
-                type="button"
-                aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
-                  place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
-                }`}
-                className={`flex items-center justify-center rounded-full shadow-md ring-2 transition-transform ${pinColor} ${
-                  active ? "scale-110" : "hover:scale-105"
-                } ${hovered && !active ? "ring-tomato" : "ring-linen"}`}
-                style={{
-                  width: size,
-                  height: size,
-                  fontSize: active ? 16 : ranked ? 13 : 12,
-                  fontWeight: ranked ? 700 : undefined,
-                }}
-              >
-                <span aria-hidden="true">{icon}</span>
-              </button>
+              <div className="relative">
+                {ranked ? (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute bottom-0 left-1/2 size-2 -translate-x-1/2 translate-y-0.5 rotate-45 ${active ? "bg-tomato" : "bg-ink"}`}
+                  />
+                ) : null}
+                <button
+                  type="button"
+                  aria-label={`${place.name}, ${place.match_count} match${place.match_count === 1 ? "" : "es"}, ${
+                    place.open_now == null ? "hours unknown" : place.open_now ? "open now" : "closed now"
+                  }`}
+                  className={`relative flex items-center justify-center rounded-full shadow-md ring-2 transition-transform ${pinColor} ${
+                    active ? "scale-110" : "hover:scale-105"
+                  } ${hovered && !active ? "ring-primary" : "ring-white"}`}
+                  style={{
+                    width: size,
+                    height: size,
+                    fontSize: active ? 12 : ranked ? 10 : 12,
+                    fontWeight: ranked ? 700 : undefined,
+                  }}
+                >
+                  <span aria-hidden="true">{icon}</span>
+                </button>
+              </div>
             </div>
           </Marker>
         );
@@ -237,7 +271,7 @@ function PlaceDetailCard({
 
   return (
     <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 md:inset-x-auto md:bottom-6 md:left-6 md:w-[420px] lg:w-[460px]">
-      <div className="pointer-events-auto overflow-hidden rounded-3xl border border-line bg-card shadow-xl">
+      <div className="pointer-events-auto overflow-hidden rounded-xl border border-line bg-card shadow-xl">
         <div className="relative">
           <RestaurantPhoto src={place.photo_url} alt={place.name} className="h-44 w-full object-cover sm:h-52" />
           <button
@@ -263,7 +297,7 @@ function PlaceDetailCard({
           <div className="flex items-start justify-between gap-3">
             <Link
               href={`/restaurants/${place.restaurant_id}`}
-              className="font-[family-name:var(--font-fraunces)] text-xl font-medium leading-tight hover:underline"
+              className="text-lg font-bold leading-tight hover:underline"
             >
               {place.name}
             </Link>
@@ -272,7 +306,7 @@ function PlaceDetailCard({
                 href={directionsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-linen"
+                className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white"
               >
                 Directions →
               </a>
@@ -335,7 +369,7 @@ function PlaceDetailCard({
                     key={item.menu_item_id}
                     type="button"
                     onClick={() => onOpenItem?.(item)}
-                    className="rounded-2xl bg-linen px-3 py-2.5 text-left"
+                    className="rounded-lg bg-linen px-3 py-2.5 text-left"
                   >
                     <p className="truncate text-sm text-ink">{item.raw_name}</p>
                     <p className="mt-1 font-bold text-tomato">{formatPrice(item)}</p>

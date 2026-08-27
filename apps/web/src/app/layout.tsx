@@ -1,21 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, Fraunces } from "next/font/google";
+import { Geist } from "next/font/google";
 
 import { SiteHeader } from "@/components/SiteHeader";
 import { AsOfTimeProvider } from "@/lib/asOfTime";
 import { ServiceModeProvider } from "@/lib/serviceMode";
 import "./globals.css";
 
-const fraunces = Fraunces({
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-fraunces",
-  axes: ["SOFT", "WONK", "opsz"],
-});
-
-const atkinson = Atkinson_Hyperlegible({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-atkinson",
+  variable: "--font-geist",
 });
 
 export const metadata: Metadata = {
@@ -27,12 +20,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F4EFE6",
+  themeColor: "#F7F8FA",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${atkinson.variable} h-full`}>
+    <html lang="en" className={`${geist.variable} h-full`}>
       <body className="min-h-full bg-linen text-ink antialiased">
         <AsOfTimeProvider>
           <ServiceModeProvider>

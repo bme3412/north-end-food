@@ -38,8 +38,8 @@ export function Badge({
   return (
     <span
       title={title}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full font-medium ${TONE_CLASSES[tone]} ${
-        size === "xs" ? "px-2 py-0.5 text-[0.7rem] uppercase tracking-wide" : "px-2.5 py-1 text-xs"
+      className={`inline-flex shrink-0 items-center gap-1 rounded-md font-medium leading-none ${TONE_CLASSES[tone]} ${
+        size === "xs" ? "px-1.5 py-1 text-[9px]" : "px-2 py-1 text-[9px]"
       }`}
     >
       {icon ? (

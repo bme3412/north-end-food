@@ -4,8 +4,8 @@ export function ProvenancePanel({ entries }: { entries: ProvenanceEntry[] }) {
   if (!entries.length) return null;
 
   return (
-    <details className="rounded-3xl border border-line bg-card p-5">
-      <summary className="cursor-pointer font-[family-name:var(--font-fraunces)] text-lg font-medium">
+    <details className="rounded-xl border border-line bg-card p-5 shadow-[0_1px_4px_rgba(23,27,32,0.04)]">
+      <summary className="cursor-pointer text-sm font-bold">
         Data sources
       </summary>
       <ul className="mt-4 flex flex-col gap-3 text-sm">

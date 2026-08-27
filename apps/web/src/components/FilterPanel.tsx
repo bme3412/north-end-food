@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { ChevronDown, Search, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
 
 import { useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
@@ -26,6 +27,7 @@ type FilterPanelProps = {
   onChange: (next: FilterState) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
+  compact?: boolean;
 };
 
 export function FilterPanel({
@@ -35,6 +37,7 @@ export function FilterPanel({
   onChange,
   expanded,
   onToggleExpanded,
+  compact = false,
 }: FilterPanelProps) {
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onChange({ ...filters, [key]: value });
@@ -62,19 +65,21 @@ export function FilterPanel({
   });
 
   return (
-    <div className="bg-card/80 p-5 backdrop-blur-sm">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className={`bg-card/95 backdrop-blur-sm ${compact ? "px-4 py-1.5" : "p-4"}`}>
+      <div className={`flex items-center ${compact ? "gap-4" : "flex-wrap gap-3"}`}>
         <label className="relative block min-w-0 flex-1 basis-64">
           <span className="sr-only">Search menus</span>
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted" aria-hidden="true">
-            🔍
+            <Search className="size-4" />
           </span>
           <input
             value={filters.q}
             onChange={(event) => set("q", event.target.value)}
             inputMode="search"
             placeholder="Search North End…"
-            className="h-12 w-full rounded-xl border border-line bg-linen pl-9 pr-9 text-[0.98rem] outline-none ring-tomato/25 focus:ring-4"
+            className={`w-full rounded-lg border border-line bg-card pl-9 pr-9 text-sm outline-none ring-primary/20 focus:border-primary focus:ring-2 ${
+              compact ? "h-8" : "h-10"
+            }`}
           />
           {filters.q ? (
             <button
@@ -83,18 +88,18 @@ export function FilterPanel({
               aria-label="Clear search"
               className="absolute inset-y-0 right-2 flex items-center px-1 text-muted hover:text-ink"
             >
-              <span aria-hidden="true">✕</span>
+              <X className="size-4" aria-hidden="true" />
             </button>
           ) : null}
         </label>
-        <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted">
+        <p className={`min-w-0 items-center gap-2 whitespace-nowrap text-[10px] text-muted ${compact ? "hidden lg:flex" : "flex flex-wrap"}`}>
           <span className="shrink-0">Try:</span>
           {SUGGESTED_QUERIES.map((query) => (
             <button
               key={query}
               type="button"
               onClick={() => set("q", query)}
-              className="rounded-full border border-line bg-linen px-2.5 py-1 text-ink hover:bg-linen-2"
+              className="text-muted transition-colors hover:text-primary"
             >
               &ldquo;{query}&rdquo;
             </button>
@@ -102,9 +107,15 @@ export function FilterPanel({
         </p>
       </div>
 
-      <FilterChipRow filters={filters} onChange={onChange} onToggleExpanded={onToggleExpanded} expanded={expanded} />
+      <FilterChipRow
+        filters={filters}
+        onChange={onChange}
+        onToggleExpanded={onToggleExpanded}
+        expanded={expanded}
+        compact={compact}
+      />
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      {!compact ? <div className="mt-3 flex flex-wrap gap-2">
         {(meta?.categories ?? [])
           .filter((category) => FEATURED_CATEGORIES.includes(category))
           .map((category) => {
@@ -123,9 +134,9 @@ export function FilterPanel({
             </button>
           );
         })}
-      </div>
+      </div> : null}
 
-      {parsedTokens.length ? (
+      {!compact && parsedTokens.length ? (
         <p className="mt-3 text-xs text-muted">
           Also matching:{" "}
           {parsedTokens.map((token) => (
@@ -268,24 +279,26 @@ function FilterChipRow({
   onChange,
   expanded,
   onToggleExpanded,
+  compact,
 }: {
   filters: FilterState;
   onChange: (next: FilterState) => void;
   expanded: boolean;
   onToggleExpanded: () => void;
+  compact: boolean;
 }) {
   const { openNowEnabled, setOpenNowEnabled } = useAsOfTime();
   const { mode, setMode } = useServiceMode();
   const underThirty = filters.maxPrice === UNDER_THIRTY;
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
+    <div className={`${compact ? "mt-1.5" : "mt-3"} flex flex-wrap items-center gap-2`}>
       <label className="relative">
         <span className="sr-only">Sort</span>
         <select
           value={filters.sort}
           onChange={(event) => onChange({ ...filters, sort: event.target.value as FilterState["sort"] })}
-          className="appearance-none rounded-full bg-ink py-1.5 pl-3.5 pr-7 text-sm font-medium text-linen outline-none"
+          className="h-7 appearance-none rounded-lg bg-ink py-1 pl-3 pr-7 text-[11px] font-medium text-white outline-none"
         >
           {(Object.keys(SORT_LABELS) as FilterState["sort"][]).map((value) => (
             <option key={value} value={value}>
@@ -297,7 +310,7 @@ function FilterChipRow({
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[0.6rem] text-linen"
         >
-          ▾
+          <ChevronDown className="size-3" />
         </span>
       </label>
 
@@ -310,28 +323,28 @@ function FilterChipRow({
       </ChipToggle>
 
       <ChipToggle active={mode === "dine-in"} onClick={() => setMode("dine-in")}>
-        <span aria-hidden="true">🍴</span> Dine-in
+        <Utensils className="size-3.5" aria-hidden="true" /> Dine-in
       </ChipToggle>
       <ChipToggle active={mode === "takeout"} onClick={() => setMode("takeout")}>
-        <span aria-hidden="true">🥡</span> Takeout
+        <ShoppingBag className="size-3.5" aria-hidden="true" /> Takeout
       </ChipToggle>
 
       <ChipToggle
         active={underThirty}
         onClick={() => onChange({ ...filters, maxPrice: underThirty ? "" : UNDER_THIRTY })}
       >
-        <span aria-hidden="true">🏷️</span> Under $30
+        <Tag className="size-3.5" aria-hidden="true" /> Under $30
       </ChipToggle>
 
       <button
         type="button"
         onClick={onToggleExpanded}
         aria-expanded={expanded}
-        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-          expanded ? "border-ink bg-ink text-linen" : "border-line bg-linen text-ink hover:bg-linen-2"
+        className={`flex h-7 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium ${
+          expanded ? "border-ink bg-ink text-white" : "border-line bg-card text-ink hover:bg-linen"
         }`}
       >
-        <span aria-hidden="true">⚙︎</span> More filters
+        <Settings2 className="size-3.5" aria-hidden="true" /> More filters
       </button>
     </div>
   );
@@ -351,8 +364,8 @@ function ChipToggle({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-        active ? "border-basil/30 bg-basil-soft text-basil" : "border-line bg-linen text-ink hover:bg-linen-2"
+      className={`flex h-7 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium ${
+        active ? "border-basil/20 bg-basil-soft text-basil" : "border-line bg-card text-ink hover:bg-linen"
       }`}
     >
       {children}

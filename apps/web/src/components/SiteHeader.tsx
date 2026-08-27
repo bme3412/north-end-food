@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BookOpen, Compass, Map, Search, Store, Utensils, type LucideIcon } from "lucide-react";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
 import { useAsOfTime } from "@/lib/asOfTime";
@@ -10,36 +11,39 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-30 h-14 border-b border-line bg-linen/90 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 h-[50px] border-b border-line bg-card/95 backdrop-blur-md">
+      <div className="mx-auto grid h-full max-w-[1440px] grid-cols-[1fr_auto] items-center gap-4 px-4 md:grid-cols-[1fr_auto_1fr] md:px-5">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-base text-linen"
-          >
-            🍴
-          </span>
+          <Utensils aria-hidden="true" className="size-6 shrink-0 text-muted" strokeWidth={1.8} />
           <span className="min-w-0">
-            <p className="truncate font-[family-name:var(--font-fraunces)] text-[1.2rem] font-medium leading-none tracking-tight text-ink">
+            <p className="truncate text-[16px] font-bold leading-none tracking-[-0.02em] text-ink">
               North End Food
             </p>
-            <p className="mt-1 hidden truncate text-[0.7rem] leading-none text-muted sm:block">
+            <p className="mt-1 hidden truncate text-[9px] leading-none text-muted sm:block">
               Find what to eat. Compare. Explore.
             </p>
           </span>
         </Link>
-        <div className="flex shrink-0 items-center gap-3">
-          <nav className="flex shrink-0 items-center gap-1">
-            <HeaderTab href="/" icon="🔍" label="Search" active={pathname === "/"} />
-            <HeaderTab
-              href="/restaurants"
-              icon="🏪"
-              label="Restaurants"
-              active={pathname?.startsWith("/restaurants") ?? false}
-            />
-          </nav>
-          <OpenNowIndicator />
-          <TimePreviewControl />
+
+        <nav aria-label="Primary navigation" className="hidden h-full items-center gap-1 md:flex">
+          <HeaderTab icon={Compass} label="Discover" />
+          <HeaderTab href="/" icon={Search} label="Search" active={pathname === "/"} />
+          <HeaderTab
+            href="/restaurants"
+            icon={Store}
+            label="Restaurants"
+            active={pathname?.startsWith("/restaurants") ?? false}
+          />
+          <HeaderTab icon={Map} label="Map" />
+          <HeaderTab icon={BookOpen} label="Guides" />
+        </nav>
+
+        <div className="flex justify-end">
+          <div className="flex items-center rounded-xl border border-line bg-card shadow-[0_2px_8px_rgba(23,27,32,0.06)]">
+            <TimePreviewControl />
+            <span className="h-4 w-px bg-line" aria-hidden="true" />
+            <OpenNowIndicator />
+          </div>
         </div>
       </div>
     </header>
@@ -52,23 +56,33 @@ function HeaderTab({
   label,
   active,
 }: {
-  href: string;
-  icon: string;
+  href?: string;
+  icon: LucideIcon;
   label: string;
-  active: boolean;
+  active?: boolean;
 }) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium transition-colors ${
-        active
-          ? "border-tomato text-tomato"
-          : "border-transparent text-muted hover:border-line hover:text-ink"
-      }`}
-    >
-      <span aria-hidden="true">{icon}</span>
-      <span className="hidden sm:inline">{label}</span>
+  const Icon = icon;
+  const className = `relative flex h-full items-center gap-1.5 border-b-2 px-3 text-[11px] font-medium transition-colors ${
+    active
+      ? "border-primary bg-primary-soft/40 text-primary"
+      : href
+        ? "border-transparent text-ink hover:bg-linen"
+        : "cursor-default border-transparent text-muted"
+  }`;
+  const content = (
+    <>
+      <Icon className="size-3.5" aria-hidden={true} />
+      <span>{label}</span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {content}
     </Link>
+  ) : (
+    <span className={className} aria-disabled="true" title={`${label} is coming soon`}>
+      {content}
+    </span>
   );
 }
 
@@ -84,15 +98,15 @@ function OpenNowIndicator() {
       type="button"
       onClick={() => setOpenNowEnabled(!openNowEnabled)}
       aria-pressed={openNowEnabled}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-        openNowEnabled ? "border-basil/30 bg-basil-soft text-basil" : "border-line bg-card text-muted"
+      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-r-lg px-2.5 text-[11px] font-medium transition-colors ${
+        openNowEnabled ? "text-ink hover:bg-basil-soft" : "text-muted hover:bg-linen"
       }`}
     >
       <span
         aria-hidden="true"
         className={`size-2 rounded-full ${openNowEnabled ? "bg-basil" : "bg-muted/40"}`}
       />
-      <span className="hidden sm:inline">Open now</span>
+      <span>Open now</span>
     </button>
   );
 }

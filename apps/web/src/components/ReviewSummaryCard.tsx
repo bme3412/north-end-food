@@ -19,7 +19,7 @@ export function ReviewSummaryCard({
   }
 
   return (
-    <div className="rounded-3xl border border-line bg-card p-5">
+    <div className="rounded-xl border border-line bg-card p-5 shadow-[0_1px_4px_rgba(23,27,32,0.05)]">
       <p className="text-[0.95rem] leading-relaxed">{summary}</p>
       <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted">
         {/* Google requires this exact attribution whenever an AI-generated summary is shown. */}

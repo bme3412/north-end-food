@@ -72,6 +72,16 @@ export function formatDistanceMiles(miles: number | null | undefined): string | 
   return `${miles.toFixed(1)} mi`;
 }
 
+// A transparent estimate rather than a routing claim: North End blocks make
+// walking paths roughly 20% longer than straight-line distance, and an
+// average walking pace is about 3 mph. The tilde is intentionally retained
+// in the UI so this cannot be mistaken for turn-by-turn travel data.
+export function formatWalkTimeEstimate(miles: number | null | undefined): string | null {
+  if (miles == null || !Number.isFinite(miles)) return null;
+  const minutes = Math.max(2, Math.round((miles * 1.2 * 60) / 3));
+  return `~${minutes} min walk`;
+}
+
 export function prettyCategory(value: string | null | undefined): string {
   if (!value) return "";
   return value.replaceAll("_", " ");

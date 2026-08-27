@@ -12,8 +12,8 @@ export function PriceProfileCard({
   const hasData = profile.restaurant_median != null;
 
   return (
-    <section className="rounded-3xl border border-line bg-card p-5">
-      <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Price profile</h2>
+    <section className="rounded-xl border border-line bg-card p-5 shadow-[0_1px_4px_rgba(23,27,32,0.05)]">
+      <h2 className="text-base font-bold">Price profile</h2>
       {hasData ? (
         <>
           <div className="mt-4 flex flex-col gap-4">

@@ -13,7 +13,7 @@ import type { MenuItem, PlaceMatch } from "@/lib/types";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
-  loading: () => <div className="h-full min-h-[320px] animate-pulse rounded-3xl bg-linen-2" />,
+  loading: () => <div className="h-full min-h-[256px] animate-pulse rounded-xl bg-linen-2" />,
 });
 
 const TOP_SLICE = 5;
@@ -77,10 +77,17 @@ function assignQualityBadges(items: MenuItem[]): Map<string, string> {
   return badges;
 }
 
-export function DishFocusPage({ group }: { group: DishGroup }) {
+export function DishFocusPage({
+  group,
+  onSelectDish,
+}: {
+  group: DishGroup;
+  onSelectDish: (dishName: string) => void;
+}) {
   const [showTop5, setShowTop5] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
   const qualityBadges = useMemo(() => assignQualityBadges(group.items), [group.items]);
 
@@ -138,9 +145,9 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
     });
   }, [sortedItems]);
 
-  const visibleItems = showTop5 ? restaurantItems.slice(0, TOP_SLICE) : restaurantItems;
+  const mapItems = showTop5 ? restaurantItems.slice(0, TOP_SLICE) : restaurantItems;
 
-  const places = useMemo(() => visibleItems.map(itemToPlaceMatch), [visibleItems]);
+  const places = useMemo(() => mapItems.map(itemToPlaceMatch), [mapItems]);
   // Ranks follow the current sort order, not the original price order, so
   // the map pins and the list numbers always agree with what's on screen.
   const ranks = useMemo(() => {
@@ -151,26 +158,40 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
     return map;
   }, [restaurantItems]);
 
-  const selectedItem = visibleItems.find((item) => item.restaurant_id === selectedId) ?? null;
+  const selectedItem = restaurantItems.find((item) => item.restaurant_id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <div className="flex flex-col gap-4">
+    <div className="mx-auto max-w-[1440px] px-2.5 py-3">
+      <div className="mb-2 grid grid-cols-2 rounded-lg bg-linen-2 p-1 lg:hidden">
+        {(["list", "map"] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            onClick={() => setMobileView(view)}
+            className={`rounded-md py-1.5 text-xs font-semibold capitalize ${
+              mobileView === view ? "bg-card text-ink shadow-sm" : "text-muted"
+            }`}
+          >
+            {view === "list" ? `Dishes (${restaurantItems.length})` : "Map & insights"}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-2.5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+        <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:flex`}>
           <DishSummaryCard group={group} />
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted">
+          <div className="flex h-7 items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold text-ink">
               {group.restaurantCount} restaurant{group.restaurantCount === 1 ? "" : "s"} serve {group.displayName}
             </h2>
-            <div className="flex items-center gap-2 text-sm text-muted">
+            <div className="flex items-center gap-1 text-[9px] text-muted">
               <span>Sort by</span>
               <label className="relative">
                 <span className="sr-only">Sort by</span>
                 <select
                   value={sortKey}
                   onChange={(event) => setSortKey(event.target.value as SortKey)}
-                  className="appearance-none rounded-full bg-ink py-1.5 pl-3.5 pr-7 text-sm font-medium text-linen outline-none"
+                  className="appearance-none bg-transparent py-1 pl-1 pr-4 text-[10px] font-semibold text-ink outline-none"
                 >
                   {(Object.keys(SORT_LABELS) as SortKey[]).map((value) => (
                     <option key={value} value={value}>
@@ -180,7 +201,7 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
                 </select>
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[0.6rem] text-linen"
+                  className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-[8px] text-muted"
                 >
                   ▾
                 </span>
@@ -188,8 +209,8 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            {visibleItems.map((item, index) => {
+          <div className="flex flex-col gap-2">
+            {restaurantItems.map((item, index) => {
               // `visibleItems` is always a prefix of `restaurantItems` (either
               // the whole thing or its first TOP_SLICE), so the map index
               // here doubles as the correct 1-based rank without a second
@@ -209,8 +230,8 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="relative h-[360px] overflow-hidden rounded-3xl border border-line lg:h-[420px]">
+        <div className={`${mobileView === "map" ? "flex" : "hidden"} min-w-0 flex-col gap-2 lg:-mt-4 lg:flex lg:gap-0`}>
+          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line lg:h-[256px]">
             <MapView
               places={places}
               ranks={ranks}
@@ -223,18 +244,18 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
               type="button"
               onClick={() => setShowTop5((current) => !current)}
               aria-pressed={showTop5}
-              className={`absolute right-3 top-3 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-md ${
+              className={`absolute right-10 top-2.5 flex h-7 items-center gap-2 rounded-lg border px-2.5 text-[9px] font-medium shadow-sm ${
                 showTop5 ? "border-line bg-card text-ink" : "border-line bg-card/90 text-muted"
               }`}
             >
               Show top {TOP_SLICE}
               <span
-                className={`relative h-4 w-7 rounded-full transition-colors ${showTop5 ? "bg-tomato" : "bg-linen-2"}`}
+                className={`relative h-3.5 w-6 rounded-full transition-colors ${showTop5 ? "bg-primary" : "bg-linen-2"}`}
                 aria-hidden="true"
               >
                 <span
-                  className={`absolute top-0.5 size-3 rounded-full bg-card transition-transform ${
-                    showTop5 ? "translate-x-3.5" : "translate-x-0.5"
+                  className={`absolute top-0.5 size-2.5 rounded-full bg-card transition-transform ${
+                    showTop5 ? "translate-x-3" : "translate-x-0.5"
                   }`}
                 />
               </span>
@@ -242,13 +263,13 @@ export function DishFocusPage({ group }: { group: DishGroup }) {
           </div>
 
           <PriceDistributionPanel group={group} />
+          {group.items[0]?.canonical_dish ? (
+            <SimilarDishesCarousel
+              canonicalDish={group.items[0].canonical_dish}
+              onSelectDish={onSelectDish}
+            />
+          ) : null}
         </div>
-      </div>
-
-      <div className="mt-6">
-        {group.items[0]?.canonical_dish ? (
-          <SimilarDishesCarousel canonicalDish={group.items[0].canonical_dish} />
-        ) : null}
       </div>
     </div>
   );

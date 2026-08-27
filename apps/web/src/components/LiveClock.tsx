@@ -20,20 +20,23 @@ export function LiveClock() {
   const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
-    setTime(formatNow());
+    const initialId = window.setTimeout(() => setTime(formatNow()), 0);
     // Minute-resolution display only needs a minute-resolution timer.
-    const id = setInterval(() => setTime(formatNow()), 30_000);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setTime(formatNow()), 30_000);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(id);
+    };
   }, []);
 
   if (time == null) return null;
 
   return (
     <span
-      className="hidden shrink-0 text-sm tabular-nums text-muted sm:inline"
+      className="shrink-0 text-[11px] font-medium tabular-nums text-ink"
       title="Current time in the North End (America/New_York)"
     >
-      {time} ET
+      {time}
     </span>
   );
 }

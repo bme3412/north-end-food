@@ -31,13 +31,13 @@ export default async function RestaurantPage({ params }: PageProps) {
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6">
-      <Link href="/" className="text-sm text-basil underline underline-offset-4">
+    <div className="mx-auto max-w-5xl px-4 pb-16 pt-5 sm:px-6">
+      <Link href="/" className="text-xs font-medium text-primary hover:underline">
         Back to search
       </Link>
 
       {/* Identity header */}
-      <h1 className="mt-4 font-[family-name:var(--font-fraunces)] text-4xl font-medium leading-tight tracking-tight">
+      <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight">
         {restaurant.name}
       </h1>
       <p className="mt-2 text-muted">{restaurant.address}</p>
@@ -134,14 +134,14 @@ export default async function RestaurantPage({ params }: PageProps) {
           <RestaurantPhoto
             src={restaurant.photo_url}
             alt={restaurant.name}
-            className="aspect-[3/4] w-full max-w-xs rounded-3xl bg-linen-2 object-cover lg:max-w-none"
+            className="aspect-[3/4] w-full max-w-xs rounded-xl bg-linen-2 object-cover shadow-[0_1px_4px_rgba(23,27,32,0.06)] lg:max-w-none"
           />
         </div>
 
         <div className="flex flex-col gap-8">
           {/* Google review intelligence */}
           <div>
-            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Review intelligence</h2>
+            <h2 className="text-base font-bold">Review intelligence</h2>
             <div className="mt-3">
               <ReviewSummaryCard
                 summary={restaurant.review_summary}
@@ -153,7 +153,7 @@ export default async function RestaurantPage({ params }: PageProps) {
 
           {/* Popularity / demand */}
           <div>
-            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">Popularity this week</h2>
+            <h2 className="text-base font-bold">Popularity this week</h2>
             {restaurant.peak_hours_text ? (
               <div className="mt-2 flex flex-wrap gap-2 text-sm">
                 <span className="rounded-full bg-linen-2 px-3 py-1">Typically busiest {restaurant.peak_hours_text}</span>
@@ -165,7 +165,7 @@ export default async function RestaurantPage({ params }: PageProps) {
                 {weeklyUpdated ? ` Last updated ${weeklyUpdated}.` : ""}
               </p>
             ) : null}
-            <div className="mt-3 rounded-3xl border border-line bg-card p-5">
+            <div className="mt-3 rounded-xl border border-line bg-card p-5 shadow-[0_1px_4px_rgba(23,27,32,0.05)]">
               {restaurant.hourly_popularity ? (
                 <BusynessChart hourly={restaurant.hourly_popularity} />
               ) : restaurant.weekly_popularity ? (
@@ -196,8 +196,8 @@ export default async function RestaurantPage({ params }: PageProps) {
       <div className="mt-8 flex flex-col gap-8">
         {[...sections.entries()].map(([section, items]) => (
           <section key={section}>
-            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-medium">{section}</h2>
-            <ul className="mt-3 divide-y divide-line rounded-3xl border border-line bg-card">
+            <h2 className="text-base font-bold">{section}</h2>
+            <ul className="mt-3 divide-y divide-line rounded-xl border border-line bg-card shadow-[0_1px_4px_rgba(23,27,32,0.04)]">
               {items.map((item) => (
                 <li key={item.menu_item_id} className="flex items-start justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">

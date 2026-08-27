@@ -36,10 +36,10 @@ export function ItemSheet({
         className="absolute inset-0 bg-ink/35"
         onClick={onClose}
       />
-      <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(42,35,28,0.18)]">
+      <div className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-2xl bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(23,27,32,0.18)]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-linen-2" />
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-[family-name:var(--font-fraunces)] text-3xl font-medium leading-tight">
+          <h2 className="text-2xl font-bold leading-tight">
             {item.raw_name}
           </h2>
           <p className="shrink-0 text-xl font-bold text-tomato">{formatPrice(item)}</p>
@@ -56,7 +56,7 @@ export function ItemSheet({
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Link
             href={`/restaurants/${item.restaurant_id}`}
-            className="text-basil underline decoration-basil/30 underline-offset-4"
+            className="text-primary underline decoration-primary/30 underline-offset-4"
           >
             {item.restaurant_name}
           </Link>
@@ -101,7 +101,7 @@ export function ItemSheet({
               href={item.source_url}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 rounded-full bg-ink px-4 py-3 text-center text-sm font-bold text-linen"
+            className="flex-1 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-white"
             >
               Official menu
             </a>
@@ -109,7 +109,7 @@ export function ItemSheet({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-full border border-line px-4 py-3 text-sm font-bold"
+            className="flex-1 rounded-lg border border-line px-4 py-3 text-sm font-bold"
           >
             Close
           </button>
@@ -121,7 +121,7 @@ export function ItemSheet({
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-linen px-3 py-2.5">
+    <div className="rounded-lg bg-linen px-3 py-2.5">
       <dt className="text-[0.7rem] text-muted">{label}</dt>
       <dd className="mt-0.5 capitalize">{value}</dd>
     </div>

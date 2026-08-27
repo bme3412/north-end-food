@@ -9,13 +9,17 @@ export function DishGroupCard({
   group: DishGroup;
   onOpen: (item: MenuItem) => void;
 }) {
+  const representativeItems = group.items.filter(
+    (item, index, items) => items.findIndex((candidate) => candidate.restaurant_id === item.restaurant_id) === index,
+  );
+
   return (
-    <article className="rounded-2xl border border-line bg-card p-4 shadow-[0_1px_0_rgba(42,35,28,0.04)]">
+    <article className="rounded-xl border border-line bg-card p-3 shadow-[0_1px_3px_rgba(23,27,32,0.04)]">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-[family-name:var(--font-fraunces)] text-base font-medium leading-snug text-ink">
+        <h2 className="text-sm font-bold leading-snug text-ink">
           {group.displayName}
         </h2>
-        <p className="shrink-0 rounded-full bg-tomato-soft px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wide text-tomato">
+        <p className="shrink-0 rounded-md bg-primary-soft px-2 py-1 text-[9px] font-semibold text-primary">
           {group.restaurantCount} place{group.restaurantCount === 1 ? "" : "s"}
         </p>
       </div>
@@ -23,7 +27,7 @@ export function DishGroupCard({
         <p className="mt-1 text-xs text-muted">Avg {formatDollars(group.avgPrice)}</p>
       ) : null}
       <div className="mt-3 flex flex-col divide-y divide-line/60">
-        {group.items.map((item) => (
+        {representativeItems.map((item) => (
           <button
             key={item.menu_item_id}
             type="button"

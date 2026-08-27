@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, Clock3, Sun } from "lucide-react";
 
 import { LiveClock } from "@/components/LiveClock";
 import { DAY_OPTIONS, formatAsOfLabel, nowAsOfTime, useAsOfTime } from "@/lib/asOfTime";
@@ -34,25 +35,13 @@ export function TimePreviewControl() {
         onClick={() => (open ? setOpen(false) : openPicker())}
         aria-expanded={open}
         aria-label="Set a time to preview open hours"
-        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-          isLive
-            ? "border-line bg-card text-ink hover:bg-linen-2"
-            : "border-tomato bg-tomato-soft text-tomato"
+        className={`flex h-8 items-center gap-1.5 rounded-l-lg px-2.5 text-xs transition-colors hover:bg-linen ${
+          isLive ? "text-ink" : "bg-primary-soft text-primary"
         }`}
       >
-        {isLive ? <LiveClock /> : <span className="tabular-nums font-medium">{formatAsOfLabel(asOf)}</span>}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 16 16"
-          className={`size-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M4 6l4 4 4-4" />
-        </svg>
+        {isLive ? <Sun className="size-3.5 text-amber-500" aria-hidden="true" /> : <Clock3 className="size-3.5" aria-hidden="true" />}
+        {isLive ? <LiveClock /> : <span className="tabular-nums font-semibold">{formatAsOfLabel(asOf)}</span>}
+        <ChevronDown aria-hidden="true" className={`size-3 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open ? (
@@ -63,7 +52,7 @@ export function TimePreviewControl() {
             className="fixed inset-0 z-30 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-line bg-card p-4 shadow-xl">
+          <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-xl border border-line bg-card p-4 shadow-xl">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">See what&apos;s open</p>
 
             <label className="mt-3 block text-sm">
@@ -71,7 +60,7 @@ export function TimePreviewControl() {
               <select
                 value={day}
                 onChange={(event) => setDay(Number(event.target.value))}
-                className="h-10 w-full rounded-xl border border-line bg-linen px-2"
+                className="h-10 w-full rounded-lg border border-line bg-card px-2"
               >
                 {DAY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -88,7 +77,7 @@ export function TimePreviewControl() {
                   type="time"
                   value={time}
                   onChange={(event) => setTime(event.target.value)}
-                  className="h-10 w-full rounded-xl border border-line bg-linen px-2"
+                  className="h-10 w-full rounded-lg border border-line bg-card px-2"
                 />
               </label>
               {useRange ? (
@@ -98,7 +87,7 @@ export function TimePreviewControl() {
                     type="time"
                     value={until}
                     onChange={(event) => setUntil(event.target.value)}
-                    className="h-10 w-full rounded-xl border border-line bg-linen px-2"
+                  className="h-10 w-full rounded-lg border border-line bg-card px-2"
                   />
                 </label>
               ) : null}
@@ -129,7 +118,7 @@ export function TimePreviewControl() {
               <button
                 type="button"
                 onClick={apply}
-                className="flex-1 rounded-full bg-tomato px-3 py-2 text-sm font-bold text-linen"
+                className="flex-1 rounded-full bg-primary px-3 py-2 text-sm font-bold text-white"
               >
                 Preview
               </button>

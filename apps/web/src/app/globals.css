@@ -1,24 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --linen: #f4efe6;
-  --linen-2: #ebe4d6;
-  --card: #fffcf7;
-  --ink: #2a231c;
-  --muted: #6d6156;
-  --line: rgba(42, 35, 28, 0.12);
-  --tomato: #c0392b;
-  --tomato-soft: #f3d4c8;
-  --basil: #3d6b4a;
-  --basil-soft: #d7e4d6;
-  --info: #2a5d8f;
-  --info-soft: #d8e6f2;
-  --gold: #9a7317;
-  --gold-soft: #f1e2b8;
-  --silver: #5b6470;
-  --silver-soft: #e2e5e9;
-  --bronze: #954f24;
-  --bronze-soft: #ecdac7;
+  --font-fraunces: var(--font-geist);
+  --font-atkinson: var(--font-geist);
+  --linen: #f7f8fa;
+  --linen-2: #eef1f4;
+  --card: #ffffff;
+  --ink: #171b20;
+  --muted: #65707b;
+  --line: #e1e5e9;
+  --primary: #2878d0;
+  --primary-soft: #eaf3fd;
+  --tomato: #d94b43;
+  --tomato-soft: #fcebea;
+  --basil: #1f9d61;
+  --basil-soft: #e9f7ef;
+  --info: #1769b0;
+  --info-soft: #eef8ff;
+  --gold: #a3780b;
+  --gold-soft: #fff5d6;
+  --silver: #7b8793;
+  --silver-soft: #edf0f2;
+  --bronze: #a65f2f;
+  --bronze-soft: #f6e8dd;
 }
 
 @theme inline {
@@ -28,6 +32,8 @@
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
   --color-tomato: var(--tomato);
   --color-tomato-soft: var(--tomato-soft);
   --color-basil: var(--basil);
@@ -40,8 +46,8 @@
   --color-silver-soft: var(--silver-soft);
   --color-bronze: var(--bronze);
   --color-bronze-soft: var(--bronze-soft);
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-atkinson);
+  --font-display: var(--font-geist);
+  --font-sans: var(--font-geist);
 }
 
 html,
@@ -52,20 +58,8 @@ body {
 }
 
 body {
-  font-family: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
-  background-image:
-    radial-gradient(1200px 480px at 10% -10%, rgba(192, 57, 43, 0.08), transparent 55%),
-    radial-gradient(900px 400px at 110% 8%, rgba(61, 107, 74, 0.08), transparent 50%);
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.045;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  z-index: 0;
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
 }
 
 * {
@@ -73,8 +67,24 @@ body::after {
 }
 
 ::selection {
-  background: var(--tomato-soft);
+  background: var(--primary-soft);
   color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 input,
