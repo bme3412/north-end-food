@@ -1,4 +1,4 @@
-import type { FilterMeta, MenuItemList, RestaurantDetail, RestaurantSummary, SimilarDishesResponse } from "./types";
+import type { CategorySummary, FilterMeta, MenuItemList, RestaurantDetail, RestaurantSummary, SimilarDishesResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -43,4 +43,9 @@ export function listMenuItems(params: Record<string, string | undefined>): Promi
 export function listSimilarDishes(canonicalDish: string, limit = 8): Promise<SimilarDishesResponse> {
   const search = new URLSearchParams({ canonical_dish: canonicalDish, limit: String(limit) });
   return getJson(`/menu-items/similar-dishes?${search.toString()}`);
+}
+
+export function getCategorySummary(category: string, limit = 20): Promise<CategorySummary> {
+  const search = new URLSearchParams({ category, limit: String(limit) });
+  return getJson(`/menu-items/category-summary?${search.toString()}`);
 }

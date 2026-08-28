@@ -1,3 +1,4 @@
+import re
 import statistics
 from dataclasses import dataclass
 from decimal import Decimal
@@ -196,6 +197,146 @@ def sibling_dishes(db: Session, canonical_dish: str, *, limit: int = 8) -> list[
     ]
     siblings.sort(key=lambda sibling: (-sibling.restaurant_count, sibling.canonical_name))
     return siblings[:limit]
+
+
+@dataclass(frozen=True)
+class CategoryDish:
+    canonical_dish_id: str
+    canonical_name: str
+    restaurant_count: int
+    min_price: Decimal | None
+    max_price: Decimal | None
+    median_price: Decimal | None
+
+
+@dataclass(frozen=True)
+class CategorySummary:
+    category: str
+    total_items: int
+    restaurant_count: int
+    dishes: list[CategoryDish]
+    uncategorized_count: int
+
+
+def category_summary(db: Session, category: str, *, limit: int = 20) -> CategorySummary | None:
+    """One row per canonical_dish within `category`, ranked by how many
+    restaurants serve it -- powers the category-browse page ("Pasta -- 47
+    dishes across 22 restaurants", one card per dish type). Mirrors
+    sibling_dishes()'s aggregation shape (latest snapshot, Python-side
+    statistics.median) but pivots on a whole category rather than one seed
+    dish's siblings.
+
+    `total_items`/`restaurant_count`/`uncategorized_count` count every
+    item in the category regardless of price (matching groupItemsByDish's
+    restaurantCount convention on the frontend); per-dish price stats only
+    consider priced, non-market-price items, matching the convention
+    dish_and_category_medians() and sibling_dishes() already use.
+    """
+    latest = latest_snapshot_ids(db).subquery()
+    rows = db.execute(
+        select(
+            MenuItem.canonical_dish,
+            MenuItem.restaurant_id,
+            MenuItem.price,
+            MenuItem.market_price,
+            CanonicalDish.canonical_name,
+        )
+        .outerjoin(CanonicalDish, MenuItem.canonical_dish == CanonicalDish.canonical_dish_id)
+        .where(
+            MenuItem.canonical_category == category,
+            MenuItem.menu_snapshot_id.in_(select(latest)),
+        )
+    ).all()
+    if not rows:
+        return None
+
+    all_restaurants: set[str] = set()
+    uncategorized_count = 0
+    by_dish: dict[str, dict] = {}
+    for dish_id, restaurant_id, price, market_price, canonical_name in rows:
+        all_restaurants.add(restaurant_id)
+        if not dish_id:
+            uncategorized_count += 1
+            continue
+        entry = by_dish.setdefault(
+            dish_id, {"canonical_name": canonical_name, "restaurant_ids": set(), "prices": []}
+        )
+        entry["restaurant_ids"].add(restaurant_id)
+        if price is not None and not market_price:
+            entry["prices"].append(price)
+
+    dishes = [
+        CategoryDish(
+            canonical_dish_id=dish_id,
+            canonical_name=entry["canonical_name"],
+            restaurant_count=len(entry["restaurant_ids"]),
+            min_price=min(entry["prices"]) if entry["prices"] else None,
+            max_price=max(entry["prices"]) if entry["prices"] else None,
+            median_price=_median(entry["prices"]),
+        )
+        for dish_id, entry in by_dish.items()
+    ]
+    dishes.sort(key=lambda dish: (-dish.restaurant_count, dish.canonical_name))
+
+    return CategorySummary(
+        category=category,
+        total_items=len(rows),
+        restaurant_count=len(all_restaurants),
+        dishes=dishes[:limit],
+        uncategorized_count=uncategorized_count,
+    )
+
+
+def resolve_search_intent(db: Session, raw_query: str | None) -> tuple[str | None, str | None]:
+    """Classify a free-text query as naming a whole food category ("pasta"),
+    one specific dish ("carbonara"), or neither -- returns
+    (resolved_category, resolved_dish), at most one set.
+
+    This is deliberately a whole-query exact match against real
+    CanonicalDish/category names, not a fuzzy per-token heuristic: a query
+    that merely *contains* a category word (e.g. "pasta under $25") should
+    keep behaving like today's keyword search, not jump to a category
+    browse page. Only "pasta" itself, or "carbonara", etc., resolve.
+
+    A dish match wins over a category match when both apply (rare -- a
+    category and a dish sharing a word) since it's the more specific
+    interpretation. This is what routes "pasta" to the category-browse
+    page (GET /menu-items/category-summary) while "carbonara" still goes
+    straight to that dish's single-dish comparison page -- see
+    SearchWorkspace.tsx's routing logic on the frontend.
+    """
+    if not raw_query or not raw_query.strip():
+        return None, None
+    normalized = re.sub(r"[^a-z0-9 ]", " ", raw_query.strip().lower())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if not normalized:
+        return None, None
+
+    for dish_id, canonical_name, aliases in db.execute(
+        select(CanonicalDish.canonical_dish_id, CanonicalDish.canonical_name, CanonicalDish.aliases)
+    ).all():
+        candidates = {canonical_name.strip().lower()} | {alias.strip().lower() for alias in (aliases or [])}
+        if normalized in candidates:
+            return None, dish_id
+
+    categories = {
+        row[0]
+        for row in db.execute(
+            select(MenuItem.canonical_category).distinct().where(MenuItem.canonical_category.is_not(None))
+        ).all()
+    }
+    # Categories are stored as snake_case IDs ("italian_american"); a typed
+    # query is space-separated ("italian american"). Also try a naive
+    # singular (strip a trailing "s": "pastas" -> "pasta") since a plural
+    # is a natural way to type a category name.
+    candidates = {normalized.replace(" ", "_")}
+    if normalized.endswith("s"):
+        candidates.add(normalized[:-1].replace(" ", "_"))
+    for candidate in candidates:
+        if candidate in categories:
+            return candidate, None
+
+    return None, None
 
 
 def price_profile(db: Session, restaurant_id: str, *, top_categories: int = 3) -> PriceProfile:

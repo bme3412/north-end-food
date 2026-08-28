@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Store, Utensils } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { CategoryFocusPage } from "@/components/CategoryFocusPage";
 import { DishFocusPage } from "@/components/DishFocusPage";
 import { DishGroupCard } from "@/components/DishGroupCard";
 import { FilterPanel } from "@/components/FilterPanel";
@@ -40,6 +41,8 @@ export function SearchWorkspace() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [places, setPlaces] = useState<PlaceMatch[]>([]);
   const [parsedTokens, setParsedTokens] = useState<string[]>([]);
+  const [resolvedCategory, setResolvedCategory] = useState<string | null>(null);
+  const [resolvedDish, setResolvedDish] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -65,6 +68,8 @@ export function SearchWorkspace() {
           setItems(data.items);
           setPlaces(data.places);
           setParsedTokens(data.parsed_tokens);
+          setResolvedCategory(data.resolved_category);
+          setResolvedDish(data.resolved_dish);
           setError(null);
         })
         .catch((err: Error) => setError(err.message))
@@ -89,15 +94,31 @@ export function SearchWorkspace() {
   const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
 
+  // A query that names a whole category ("pasta") gets the category-browse
+  // page instead of picking one dish out of it -- see queries.py's
+  // resolve_search_intent(). Checked before the single-dish case below;
+  // the backend guarantees resolved_category/resolved_dish are never both
+  // set, so at most one of categoryFocus/focusGroup fires.
+  const categoryFocus = useMemo(() => {
+    if (!filters.q.trim() || selectedPlaceId) return null;
+    return resolvedCategory;
+  }, [filters.q, selectedPlaceId, resolvedCategory]);
+
   // Text search is intent-first: groupItemsByDish preserves the API's
   // relevance order, so the first group is the best interpretation of the
   // query. Use it for the comparison dashboard even when the query also
-  // returns related dishes. Empty/structured-filter browsing keeps the
-  // general dishes-and-map workspace below.
+  // returns related dishes. When the query resolved to one specific dish
+  // by name/alias (resolvedDish), prefer that exact group over "whatever
+  // ranked first" in case ranking and dish-identity ever disagree.
+  // Empty/structured-filter browsing keeps the general dishes-and-map
+  // workspace below.
   const focusGroup = useMemo(() => {
-    if (!filters.q.trim() || selectedPlaceId || grouped.length === 0) return null;
+    if (!filters.q.trim() || selectedPlaceId || grouped.length === 0 || categoryFocus) return null;
+    if (resolvedDish) {
+      return grouped.find((group) => group.key === resolvedDish) ?? grouped[0];
+    }
     return grouped[0];
-  }, [filters.q, selectedPlaceId, grouped]);
+  }, [filters.q, selectedPlaceId, grouped, categoryFocus, resolvedDish]);
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
@@ -119,6 +140,36 @@ export function SearchWorkspace() {
     });
     return withMetric.map((entry) => entry.place);
   }, [places, restaurantSort]);
+
+  if (categoryFocus) {
+    return (
+      <div className="min-h-[calc(100vh-3.5rem)]">
+        <div className="border-b border-line">
+          <FilterPanel
+            filters={filters}
+            meta={meta}
+            parsedTokens={parsedTokens}
+            onChange={setFilters}
+            expanded={filtersExpanded}
+            onToggleExpanded={() => setFiltersExpanded((open) => !open)}
+            compact
+          />
+        </div>
+        {error ? (
+          <p className="mx-auto mt-6 max-w-7xl rounded-2xl bg-tomato-soft px-4 py-3 text-sm">
+            Can’t reach the API. {error}
+          </p>
+        ) : (
+          <CategoryFocusPage
+            key={categoryFocus}
+            category={categoryFocus}
+            onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+          />
+        )}
+        <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+      </div>
+    );
+  }
 
   if (focusGroup) {
     return (

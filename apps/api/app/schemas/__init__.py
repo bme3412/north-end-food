@@ -1,4 +1,6 @@
 from app.schemas.menu import (
+    CategoryDishOut,
+    CategorySummaryOut,
     MenuItemList,
     MenuItemOut,
     PlaceMatch,
@@ -10,6 +12,8 @@ from app.schemas.menu import (
 )
 
 __all__ = [
+    "CategoryDishOut",
+    "CategorySummaryOut",
     "MenuItemList",
     "MenuItemOut",
     "PlaceMatch",

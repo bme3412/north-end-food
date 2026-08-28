@@ -146,6 +146,8 @@ export type MenuItemList = {
   items: MenuItem[];
   places: PlaceMatch[];
   parsed_tokens: string[];
+  resolved_category: string | null;
+  resolved_dish: string | null;
 };
 
 export type SimilarDish = {
@@ -157,6 +159,23 @@ export type SimilarDish = {
 
 export type SimilarDishesResponse = {
   dishes: SimilarDish[];
+};
+
+export type CategoryDish = {
+  canonical_dish: string;
+  canonical_name: string;
+  restaurant_count: number;
+  min_price: string | null;
+  max_price: string | null;
+  median_price: string | null;
+};
+
+export type CategorySummary = {
+  category: string;
+  total_items: number;
+  restaurant_count: number;
+  dishes: CategoryDish[];
+  uncategorized_count: number;
 };
 
 export type FilterMeta = {

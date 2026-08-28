@@ -10,16 +10,18 @@ from app.hours import compute_open_status, format_hours_summary
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
 from app.queries import (
     DishCategoryMedians,
+    category_summary,
     dish_and_category_medians,
     dish_match_clause,
     ingredient_match_clause,
     item_with_source_query,
     latest_snapshot_ids,
+    resolve_search_intent,
     sibling_dishes,
 )
 from app.ranking import balanced_secondary_score, fuzzy_token_clause, relevance_expressions
 from app.schemas import MenuItemList, MenuItemOut
-from app.schemas.menu import PlaceMatch, SimilarDishesOut, SimilarDishOut
+from app.schemas.menu import CategoryDishOut, CategorySummaryOut, PlaceMatch, SimilarDishesOut, SimilarDishOut
 from app.search import parse_query
 
 router = APIRouter(prefix="/menu-items", tags=["menu-items"])
@@ -295,6 +297,34 @@ def similar_dishes(
     )
 
 
+@router.get("/category-summary", response_model=CategorySummaryOut)
+def get_category_summary(
+    category: str = Query(..., description="Canonical category, e.g. pasta"),
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+) -> CategorySummaryOut:
+    summary = category_summary(db, category.strip().lower(), limit=limit)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return CategorySummaryOut(
+        category=summary.category,
+        total_items=summary.total_items,
+        restaurant_count=summary.restaurant_count,
+        dishes=[
+            CategoryDishOut(
+                canonical_dish=dish.canonical_dish_id,
+                canonical_name=dish.canonical_name,
+                restaurant_count=dish.restaurant_count,
+                min_price=dish.min_price,
+                max_price=dish.max_price,
+                median_price=dish.median_price,
+            )
+            for dish in summary.dishes
+        ],
+        uncategorized_count=summary.uncategorized_count,
+    )
+
+
 @router.get("", response_model=MenuItemList)
 def list_menu_items(
     q: str | None = Query(None, description="Free text. Tokens are AND'd. Understands 'under $30'."),
@@ -326,6 +356,7 @@ def list_menu_items(
     db: Session = Depends(get_db),
 ) -> MenuItemList:
     parsed = parse_query(q)
+    resolved_category, resolved_dish = resolve_search_intent(db, q)
     medians = dish_and_category_medians(db)
     stmt = item_with_source_query(db)
     stmt = _apply_filters(
@@ -438,6 +469,8 @@ def list_menu_items(
         items=items,
         places=_places(items),
         parsed_tokens=parsed.tokens,
+        resolved_category=resolved_category,
+        resolved_dish=resolved_dish,
     )
 
 
