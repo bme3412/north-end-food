@@ -74,36 +74,45 @@ export function DiscoverHome() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-5 sm:px-6 md:pb-12 md:pt-8">
       <section className="overflow-hidden rounded-[28px] border border-line bg-card shadow-[0_20px_60px_rgba(23,27,32,0.08)]">
-        <div className="relative px-5 py-6 sm:px-8 sm:py-10">
-          <div className="absolute -right-12 -top-16 size-48 rounded-full bg-primary-soft blur-3xl" aria-hidden="true" />
-          <p className="relative flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
-            <Sparkles className="size-4" aria-hidden="true" /> Boston&apos;s North End
-          </p>
-          <h1 className="relative mt-3 max-w-xl text-3xl font-bold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
-            Find the dish, then choose the table.
-          </h1>
-          <p className="relative mt-3 max-w-lg text-sm leading-6 text-muted sm:text-base">
-            Compare official menus, prices, and open restaurants across the neighborhood.
-          </p>
-          <form
-            className="relative mt-6 flex min-h-12 items-center rounded-2xl border border-line bg-linen px-4 shadow-inner focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitSearch();
-            }}
-          >
-            <Search className="size-5 shrink-0 text-muted" aria-hidden="true" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search dishes, restaurants, or ingredients"
-              className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+        <div className="grid md:grid-cols-2">
+          <div className="flex flex-col justify-center px-5 py-6 sm:px-8 sm:py-10">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <Sparkles className="size-4" aria-hidden="true" /> Boston&apos;s North End
+            </p>
+            <h1 className="mt-3 text-3xl font-bold leading-[1.05] tracking-[-0.04em] sm:text-4xl lg:text-5xl">
+              Find the dish, then choose the table.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-muted sm:text-base">
+              Compare official menus, prices, and open restaurants across the neighborhood.
+            </p>
+            <form
+              className="mt-6 flex min-h-12 items-center rounded-2xl border border-line bg-linen px-4 shadow-inner focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitSearch();
+              }}
+            >
+              <Search className="size-5 shrink-0 text-muted" aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search dishes, restaurants, or ingredients"
+                className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+              />
+              <button type="submit" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+                <ArrowRight className="size-4" aria-hidden="true" />
+                <span className="sr-only">Search</span>
+              </button>
+            </form>
+          </div>
+          <div className="relative min-h-52 md:min-h-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/paul-revere-mall.jpg"
+              alt="Paul Revere statue on the mall, with Old North Church behind it"
+              className="h-52 w-full object-cover md:absolute md:inset-0 md:h-full"
             />
-            <button type="submit" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
-              <ArrowRight className="size-4" aria-hidden="true" />
-              <span className="sr-only">Search</span>
-            </button>
-          </form>
+          </div>
         </div>
       </section>
 
