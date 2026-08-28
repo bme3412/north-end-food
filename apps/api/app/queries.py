@@ -338,8 +338,9 @@ def resolve_search_intent(db: Session, raw_query: str | None) -> tuple[str | Non
     category and a dish sharing a word) since it's the more specific
     interpretation. This is what routes "pasta" to the category-browse
     page (GET /menu-items/category-summary) while "carbonara" still goes
-    straight to that dish's single-dish comparison page -- see
-    SearchWorkspace.tsx's routing logic on the frontend.
+    straight to that dish's single-dish comparison page. Broader keyword
+    searches stay on the grouped list so sibling dishes stay visible -- see
+    SearchWorkspace.tsx / pickSearchView().
     """
     if not raw_query or not raw_query.strip():
         return None, None

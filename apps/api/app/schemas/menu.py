@@ -174,6 +174,8 @@ class PlaceMatch(BaseModel):
 class MenuItemList(BaseModel):
     total: int
     items: list[MenuItemOut]
+    # Derived from `items` on this page, not the unpaged match set, so a
+    # map pin always has dishes in the accompanying list.
     places: list[PlaceMatch] = Field(default_factory=list)
     parsed_tokens: list[str] = Field(default_factory=list)
     parsed_pizza_serving: str | None = None

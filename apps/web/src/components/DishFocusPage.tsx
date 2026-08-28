@@ -83,9 +83,11 @@ function assignQualityBadges(items: MenuItem[]): Map<string, string> {
 export function DishFocusPage({
   group,
   onSelectDish,
+  onBack,
 }: {
   group: DishGroup;
   onSelectDish: (dishName: string) => void;
+  onBack?: () => void;
 }) {
   const [showTop5, setShowTop5] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -174,6 +176,15 @@ export function DishFocusPage({
       </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="self-start text-[11px] font-medium text-basil underline underline-offset-2"
+            >
+              All matching dishes
+            </button>
+          ) : null}
           <DishSummaryCard group={group} />
 
           <div className="flex h-8 items-center justify-between px-1">

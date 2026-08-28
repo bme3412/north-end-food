@@ -264,6 +264,7 @@ function PlaceDetailCard({
     };
   }, [place.restaurant_id, asOf]);
 
+  const matchedHere = items.filter((item) => item.restaurant_id === place.restaurant_id);
   const directionsUrl =
     place.latitude != null && place.longitude != null
       ? `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`
@@ -352,7 +353,7 @@ function PlaceDetailCard({
             </div>
           ) : null}
 
-          {items.length ? (
+          {matchedHere.length ? (
             <div className="mt-5 border-t border-line pt-4">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-wide text-muted">Matched dishes here</p>
@@ -364,7 +365,7 @@ function PlaceDetailCard({
                 </Link>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                {items.slice(0, 2).map((item) => (
+                {matchedHere.slice(0, 2).map((item) => (
                   <button
                     key={item.menu_item_id}
                     type="button"

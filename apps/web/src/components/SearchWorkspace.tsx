@@ -23,6 +23,7 @@ import {
   filtersToSearchParams,
   type FilterState,
 } from "@/lib/filters";
+import { pickSearchView } from "@/lib/searchDisplay";
 import { NORTH_END_CENTER, haversineMiles } from "@/lib/geo";
 import { serviceModeToParams, useServiceMode } from "@/lib/serviceMode";
 import type { FilterMeta, MenuItem, PlaceMatch } from "@/lib/types";
@@ -50,6 +51,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [groupByDish, setGroupByDish] = useState(true);
+  const [compareGroupKey, setCompareGroupKey] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<"map" | "list">(initialMobileTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +112,10 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
     };
   }, [filters, asOf, openNowEnabled, serviceMode]);
 
+  useEffect(() => {
+    setCompareGroupKey(null);
+  }, [filters.q, filters.pizzaServing, filters.restaurantId]);
+
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
     setFilters((current) =>
@@ -126,41 +132,32 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
 
-  // A query that names a whole category ("pasta") gets the category-browse
-  // page instead of picking one dish out of it -- see queries.py's
-  // resolve_search_intent(). Checked before the single-dish case below;
-  // the backend guarantees resolved_category/resolved_dish are never both
-  // set, so at most one of categoryFocus/focusGroup fires.
-  const categoryFocus = useMemo(() => {
-    if (!filters.q.trim() || selectedPlaceId || filters.pizzaServing || parsedPizzaServing) return null;
-    return resolvedCategory;
-  }, [filters.q, filters.pizzaServing, selectedPlaceId, resolvedCategory, parsedPizzaServing]);
-
-  // Text search is intent-first: groupItemsByDish preserves the API's
-  // relevance order, so the first group is the best interpretation of the
-  // query. Use it for the comparison dashboard even when the query also
-  // returns related dishes. When the query resolved to one specific dish
-  // by name/alias (resolvedDish), prefer that exact group over "whatever
-  // ranked first" in case ranking and dish-identity ever disagree.
-  // Empty/structured-filter browsing keeps the general dishes-and-map
-  // workspace below.
-  const focusGroup = useMemo(() => {
-    if (
-      !filters.q.trim() ||
-      selectedPlaceId ||
-      grouped.length === 0 ||
-      categoryFocus ||
-      parsedPizzaServing ||
-      filters.pizzaServing
-    ) return null;
-    if (resolvedDish) {
-      const exactDishGroups = grouped.filter(
-        (group) => group.key === resolvedDish || group.key.startsWith(`${resolvedDish}::`),
-      );
-      return exactDishGroups.length === 1 ? exactDishGroups[0] : null;
-    }
-    return grouped[0];
-  }, [filters.q, filters.pizzaServing, selectedPlaceId, grouped, categoryFocus, resolvedDish, parsedPizzaServing]);
+  const searchView = useMemo(
+    () =>
+      pickSearchView({
+        q: filters.q,
+        selectedPlaceId,
+        pizzaServing: filters.pizzaServing,
+        parsedPizzaServing,
+        resolvedCategory,
+        resolvedDish,
+        groupKeys: grouped.map((group) => group.key),
+        compareGroupKey,
+      }),
+    [
+      filters.q,
+      filters.pizzaServing,
+      selectedPlaceId,
+      parsedPizzaServing,
+      resolvedCategory,
+      resolvedDish,
+      grouped,
+      compareGroupKey,
+    ],
+  );
+  const categoryFocus = searchView.kind === "category" ? searchView.category : null;
+  const focusGroup =
+    searchView.kind === "dish" ? (grouped.find((group) => group.key === searchView.groupKey) ?? null) : null;
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
@@ -239,6 +236,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           <DishFocusPage
             group={focusGroup}
             onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+            onBack={compareGroupKey ? () => setCompareGroupKey(null) : undefined}
           />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
@@ -347,7 +345,12 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
                 <>
                   {grouped.map((group) =>
                     group.restaurantCount >= 2 ? (
-                      <DishGroupCard key={group.key} group={group} onOpen={setSelectedItem} />
+                      <DishGroupCard
+                        key={group.key}
+                        group={group}
+                        onOpen={setSelectedItem}
+                        onCompare={() => setCompareGroupKey(group.key)}
+                      />
                     ) : (
                       <ItemCard
                         key={group.items[0].menu_item_id}

@@ -227,14 +227,22 @@ def test_market_price_items_have_no_pct_vs_median(client):
             assert item["pct_vs_median"] is None
 
 
-def test_list_pagination_limits_items_without_hiding_map_places(client):
+def test_list_pagination_keeps_map_places_on_the_same_page(client):
     full = client.get("/menu-items", params={"priced_only": "true"}).json()
     page = client.get("/menu-items", params={"priced_only": "true", "limit": 3, "offset": 1}).json()
 
     assert page["total"] == full["total"]
     assert len(page["items"]) == 3
     assert page["items"] == full["items"][1:4]
-    assert page["places"] == full["places"]
+
+    page_restaurant_ids = []
+    for item in page["items"]:
+        if item["restaurant_id"] not in page_restaurant_ids:
+            page_restaurant_ids.append(item["restaurant_id"])
+    assert [place["restaurant_id"] for place in page["places"]] == page_restaurant_ids
+    assert {place["restaurant_id"] for place in page["places"]} <= {
+        place["restaurant_id"] for place in full["places"]
+    }
 
 
 def test_pizza_serving_filter_keeps_slice_and_whole_price_benchmarks_separate(client, db_session):

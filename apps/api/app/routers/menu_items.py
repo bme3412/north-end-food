@@ -489,8 +489,11 @@ def list_menu_items(
         items = [item for item in items if include_item(item)]
 
     total = len(items)
-    places = _places(items)
     paged_items = items[offset : offset + limit] if limit is not None else items[offset:]
+    # Map pins and the item list must describe the same page. Building
+    # places from the full match set made pins whose dishes were truncated
+    # by limit/offset open an empty popup.
+    places = _places(paged_items)
     return MenuItemList(
         total=total,
         items=paged_items,
