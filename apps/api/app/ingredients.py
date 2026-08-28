@@ -22,6 +22,8 @@ _ALIAS_MERGES = {
     "clams": "clam",
     "bufala mozzarella": "buffalo mozzarella",
     "parmigiano": "parmesan",
+    "fregula": "fregola",
+    "snap pea": "snap peas",
 }
 
 _SLUG_RE = re.compile(r"[^A-Z0-9]+")
@@ -70,7 +72,7 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "green bean", "kale", "leek", "lettuce", "mixed greens", "parsnip", "romaine", "white bean",
             "peas", "grilled vegetables", "vegetable", "green", "arugula", "carrot", "shallot", "scallion",
             "escarole", "radicchio", "squash", "bean", "chil", "giardiniera", "insalata", "slaw",
-            "cipollini", "frisee", "lentil", "sweet pea",
+            "cipollini", "frisee", "lentil", "sweet pea", "snap pea",
         ),
     ),
     ("herb", ("basil", "sage", "thyme", "anise", "parsley", "rosemary", "oregano", "tarragon", "mint", "cilantro", "herb")),
@@ -90,7 +92,7 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "pasta", "linguine", "pappardelle", "penne", "risotto", "ziti", "focaccia", "crouton",
             "semolina", "agnolotti", "crostini", "gnocchi", "polenta", "rigatoni", "bombolotti",
             "capellini", "bagel", "toast", "sourdough", "crepe", "pancake", "panko", "waffle", "quinoa",
-            "roll", "fregola",
+            "roll", "fregola", "fregula",
         ),
     ),
     (
@@ -111,7 +113,7 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "gelato", "ladyfinger", "lady finger", "amaretti", "custard", "caramel", "zabaglione",
             "savoiardi", "chocolate", "biscotti", "cannoli", "cookie", "vanilla", "tiramisu",
             "marzipan", "mousse", "fudge", "ganache", "sugar", "icing", "crumble", "cotton candy",
-            "tres leches", "jimmies", "oreo",
+            "tres leches", "jimmies", "oreo", "zeppole",
         ),
     ),
     (

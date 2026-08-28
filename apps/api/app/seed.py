@@ -21,6 +21,7 @@ from app.models import (
 )
 from app.pricing import record_price_observations
 from app.seed_data import CANONICAL_DISHES, RESTAURANTS
+from app.seed_wave2 import WAVE2_RESTAURANTS
 
 
 def _stable_uuid(*parts: str) -> str:
@@ -133,7 +134,7 @@ def seed(db: Session, *, reset: bool = True) -> dict[str, int]:
         db.merge(CanonicalDish(**dish))
     db.flush()
 
-    stats = add_restaurants(db, RESTAURANTS, skip_existing=not reset)
+    stats = add_restaurants(db, RESTAURANTS + WAVE2_RESTAURANTS, skip_existing=not reset)
     return {**stats, "dishes": len(CANONICAL_DISHES)}
 
 

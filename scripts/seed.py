@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load the five-restaurant Sprint 0 seed into Postgres."""
+"""Load the hand-seeded restaurant corpus (NE_0001–NE_0045) into Postgres."""
 
 from __future__ import annotations
 

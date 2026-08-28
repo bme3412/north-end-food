@@ -259,10 +259,17 @@ def test_pizza_serving_filter_keeps_slice_and_whole_price_benchmarks_separate(cl
         )
     )
     assert len(pizzas) >= 2
-    slice_item, whole_item = pizzas[:2]
+    # Neutralize leftover seed rows (e.g. Umberto's Sicilian Pizza Slice) so
+    # name-based serving detection doesn't leak extra prices into either bucket.
+    for pizza in pizzas:
+        pizza.raw_name = "Cheese Pizza"
+        pizza.menu_section = "Pizza"
+        pizza.portion = None
+        pizza.size = None
+        pizza.price = None
+    slice_item, whole_item = pizzas[0], pizzas[1]
     slice_item.raw_name = "Cheese Pizza Slice"
     slice_item.portion = "slice"
-    slice_item.size = None
     slice_item.price = Decimal("5")
     whole_item.portion = "whole"
     whole_item.size = "16 inch"
