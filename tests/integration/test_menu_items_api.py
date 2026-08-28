@@ -225,3 +225,13 @@ def test_market_price_items_have_no_pct_vs_median(client):
     for item in body["items"]:
         if item["market_price"]:
             assert item["pct_vs_median"] is None
+
+
+def test_list_pagination_limits_items_without_hiding_map_places(client):
+    full = client.get("/menu-items", params={"priced_only": "true"}).json()
+    page = client.get("/menu-items", params={"priced_only": "true", "limit": 3, "offset": 1}).json()
+
+    assert page["total"] == full["total"]
+    assert len(page["items"]) == 3
+    assert page["items"] == full["items"][1:4]
+    assert page["places"] == full["places"]

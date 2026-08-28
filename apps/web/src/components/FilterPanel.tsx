@@ -148,7 +148,28 @@ export function FilterPanel({
       ) : null}
 
       {expanded ? (
-        <div className="mt-4 space-y-4 border-t border-line pt-4">
+        <>
+        <button
+          type="button"
+          aria-label="Close filters"
+          onClick={onToggleExpanded}
+          className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-[2px] md:hidden"
+        />
+        <div className="mobile-filter-sheet fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] space-y-4 overflow-y-auto rounded-t-[28px] border-t border-line bg-card px-5 pb-6 pt-3 shadow-2xl md:static md:mt-4 md:max-h-none md:rounded-none md:border-t md:bg-transparent md:px-0 md:pb-0 md:pt-4 md:shadow-none">
+          <div className="sticky top-0 z-10 -mx-5 flex items-center justify-between border-b border-line bg-card/95 px-5 pb-3 pt-1 backdrop-blur md:hidden">
+            <div>
+              <h2 className="text-base font-bold">Filters</h2>
+              <p className="text-[10px] text-muted">Refine restaurants and dishes</p>
+            </div>
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-label="Close filters"
+              className="flex size-11 items-center justify-center rounded-full bg-linen-2"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
           {meta?.categories.length ? (
             <Field label="Category">
               <ChipGrid
@@ -256,7 +277,15 @@ export function FilterPanel({
           >
             Clear all filters
           </button>
+          <button
+            type="button"
+            onClick={onToggleExpanded}
+            className="sticky bottom-0 min-h-12 w-full rounded-xl bg-primary px-5 font-bold text-white shadow-lg md:hidden"
+          >
+            Show results
+          </button>
         </div>
+        </>
       ) : null}
     </div>
   );

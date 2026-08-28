@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { DishVisual } from "@/components/DishVisual";
+import { SaveButton } from "@/components/SaveButton";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory } from "@/lib/format";
 import type { MenuItem } from "@/lib/types";
 
@@ -28,10 +29,10 @@ export function ItemCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <RestaurantPhoto
-          src={item.photo_url}
-          alt={item.restaurant_name}
-          className={`${compact ? "size-12" : "size-16"} shrink-0 rounded-lg object-cover`}
+        <DishVisual
+          category={item.canonical_category}
+          name={item.raw_name}
+          className={`${compact ? "size-12" : "size-16"} rounded-lg`}
         />
         <div className="min-w-0 flex-1">
         <button type="button" onClick={() => onOpen?.(item)} className="w-full text-left">
@@ -43,7 +44,7 @@ export function ItemCard({
           >
             {item.raw_name}
           </h2>
-          <p className={`shrink-0 font-bold text-tomato ${compact ? "text-sm" : "pt-1 text-base"}`}>
+          <p className={`shrink-0 font-bold text-primary ${compact ? "text-sm" : "pt-1 text-base"}`}>
             {formatPrice(item)}
           </p>
         </div>
@@ -83,6 +84,7 @@ export function ItemCard({
             Unverified
           </span>
         ) : null}
+        <SaveButton kind="dish" item={item} compact />
       </div>
       {item.north_end_median_price != null && item.pct_vs_median != null ? (
         <p className={`mt-1.5 text-xs text-muted ${compact ? "" : "text-[0.8rem]"}`}>

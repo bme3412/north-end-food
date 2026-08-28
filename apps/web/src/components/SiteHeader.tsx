@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Compass, Map, Search, Store, Utensils, type LucideIcon } from "lucide-react";
+import { Bookmark, Compass, Map, Search, Store, Utensils, type LucideIcon } from "lucide-react";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
 import { useAsOfTime } from "@/lib/asOfTime";
@@ -26,16 +26,16 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label="Primary navigation" className="hidden h-full items-center gap-1 md:flex">
-          <HeaderTab icon={Compass} label="Discover" />
-          <HeaderTab href="/" icon={Search} label="Search" active={pathname === "/"} />
+          <HeaderTab href="/" icon={Compass} label="Discover" active={pathname === "/"} />
+          <HeaderTab href="/search" icon={Search} label="Search" active={pathname === "/search"} />
           <HeaderTab
             href="/restaurants"
             icon={Store}
             label="Restaurants"
             active={pathname?.startsWith("/restaurants") ?? false}
           />
-          <HeaderTab icon={Map} label="Map" />
-          <HeaderTab icon={BookOpen} label="Guides" />
+          <HeaderTab href="/map" icon={Map} label="Map" active={pathname === "/map"} />
+          <HeaderTab href="/saved" icon={Bookmark} label="Saved" active={pathname === "/saved"} />
         </nav>
 
         <div className="flex justify-end">

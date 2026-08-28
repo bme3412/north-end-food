@@ -1,5 +1,5 @@
-import { SearchWorkspace } from "@/components/SearchWorkspace";
+import { DiscoverHome } from "@/components/DiscoverHome";
 
 export default function Home() {
-  return <SearchWorkspace />;
+  return <DiscoverHome />;
 }

@@ -353,6 +353,8 @@ def list_menu_items(
         "relevance",
         description="relevance (default; ranked by text match when q is set, else price) | price | name",
     ),
+    limit: int | None = Query(None, ge=1, le=500, description="Optional response page size for list clients"),
+    offset: int = Query(0, ge=0, description="Number of matching menu items to skip"),
     db: Session = Depends(get_db),
 ) -> MenuItemList:
     parsed = parse_query(q)
@@ -464,10 +466,13 @@ def list_menu_items(
     else:
         items = [item for item in items if include_item(item)]
 
+    total = len(items)
+    places = _places(items)
+    paged_items = items[offset : offset + limit] if limit is not None else items[offset:]
     return MenuItemList(
-        total=len(items),
-        items=items,
-        places=_places(items),
+        total=total,
+        items=paged_items,
+        places=places,
         parsed_tokens=parsed.tokens,
         resolved_category=resolved_category,
         resolved_dish=resolved_dish,

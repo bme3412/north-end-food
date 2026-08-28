@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AsOfTimeProvider } from "@/lib/asOfTime";
+import { SavedProvider } from "@/lib/saved";
 import { ServiceModeProvider } from "@/lib/serviceMode";
 import "./globals.css";
 
@@ -29,8 +31,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-linen text-ink antialiased">
         <AsOfTimeProvider>
           <ServiceModeProvider>
-            <SiteHeader />
-            {children}
+            <SavedProvider>
+              <SiteHeader />
+              <main className="mobile-page">{children}</main>
+              <MobileBottomNav />
+            </SavedProvider>
           </ServiceModeProvider>
         </AsOfTimeProvider>
       </body>

@@ -2,8 +2,8 @@ import type { CategorySummary, FilterMeta, MenuItemList, RestaurantDetail, Resta
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, { cache: "no-store", signal });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText} for ${path}`);
   }
@@ -31,13 +31,13 @@ export function getFilterMeta(): Promise<FilterMeta> {
   return getJson("/menu-items/meta");
 }
 
-export function listMenuItems(params: Record<string, string | undefined>): Promise<MenuItemList> {
+export function listMenuItems(params: Record<string, string | undefined>, signal?: AbortSignal): Promise<MenuItemList> {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value) search.set(key, value);
   }
   const qs = search.toString();
-  return getJson(`/menu-items${qs ? `?${qs}` : ""}`);
+  return getJson(`/menu-items${qs ? `?${qs}` : ""}`, signal);
 }
 
 export function listSimilarDishes(canonicalDish: string, limit = 8): Promise<SimilarDishesResponse> {

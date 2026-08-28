@@ -57,6 +57,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm run test
       # `next build` typechecks internally after generating route types
       # (.next/types) — a standalone `tsc --noEmit` runs before those types
       # exist on a clean checkout and fails with spurious "Cannot find name

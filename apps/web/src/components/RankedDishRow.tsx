@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PersonStanding, ShoppingBag, Star, Utensils } from "lucide-react";
 
 import { Badge } from "@/components/Badge";
-import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { DishVisual } from "@/components/DishVisual";
 import { formatPctBadge, formatPrice, formatWalkTimeEstimate } from "@/lib/format";
 import { MEDAL_TONE_CLASSES, medalTone } from "@/lib/rank";
 import type { MenuItem } from "@/lib/types";
@@ -36,7 +36,7 @@ export function RankedDishRow({
         {rank}
       </span>
 
-      <RestaurantPhoto src={item.photo_url} alt={item.restaurant_name} className="h-[52px] w-[52px] shrink-0 rounded-lg object-cover" />
+      <DishVisual category={item.canonical_category} name={item.raw_name} className="h-[52px] w-[52px] rounded-lg" />
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12px] font-bold leading-4 text-ink">

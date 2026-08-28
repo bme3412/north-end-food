@@ -8,6 +8,7 @@ import { NotConnectedCard } from "@/components/NotConnectedCard";
 import { BusynessChart } from "@/components/BusynessChart";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
 import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
+import { SaveButton } from "@/components/SaveButton";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -31,13 +32,30 @@ export default async function RestaurantPage({ params }: PageProps) {
   const weeklyUpdated = formatDate(restaurant.weekly_popularity_updated_at);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16 pt-5 sm:px-6">
-      <Link href="/" className="text-xs font-medium text-primary hover:underline">
+    <div className="mx-auto max-w-5xl px-4 pb-20 pt-3 sm:px-6 sm:pt-5">
+      <Link href="/search" className="inline-flex min-h-11 items-center text-xs font-medium text-primary hover:underline">
         Back to search
       </Link>
 
+      <div className="relative -mx-4 overflow-hidden sm:hidden">
+        <RestaurantPhoto
+          src={restaurant.photo_url}
+          alt={restaurant.name}
+          className="aspect-[16/10] w-full object-cover"
+        />
+        <div className="absolute right-4 top-4">
+          <SaveButton kind="restaurant" item={restaurant} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-ink/55 to-transparent" aria-hidden="true" />
+        {restaurant.open_now != null ? (
+          <span className={`absolute bottom-4 left-4 rounded-full px-3 py-1 text-xs font-bold text-white ${restaurant.open_now ? "bg-basil" : "bg-ink/80"}`}>
+            {restaurant.open_now ? "Open now" : "Closed now"}
+          </span>
+        ) : null}
+      </div>
+
       {/* Identity header */}
-      <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight">
+      <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:mt-3">
         {restaurant.name}
       </h1>
       <p className="mt-2 text-muted">{restaurant.address}</p>
@@ -91,11 +109,11 @@ export default async function RestaurantPage({ params }: PageProps) {
       </div>
       {restaurant.hours_summary ? <p className="mt-2 text-sm text-muted">{restaurant.hours_summary}</p> : null}
 
-      <div className="mt-3 flex flex-wrap gap-2 text-sm">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap">
         {restaurant.official_website ? (
           <a
             href={restaurant.official_website}
-            className="rounded-full border border-line px-3 py-1"
+            className="flex min-h-11 items-center justify-center rounded-xl border border-line px-4 font-semibold"
             target="_blank"
             rel="noreferrer"
           >
@@ -105,7 +123,7 @@ export default async function RestaurantPage({ params }: PageProps) {
         {restaurant.reservation_url ? (
           <a
             href={restaurant.reservation_url}
-            className="rounded-full border border-line px-3 py-1"
+            className="flex min-h-11 items-center justify-center rounded-xl border border-line px-4 font-semibold"
             target="_blank"
             rel="noreferrer"
           >
@@ -115,7 +133,7 @@ export default async function RestaurantPage({ params }: PageProps) {
         {restaurant.maps_uri ? (
           <a
             href={restaurant.maps_uri}
-            className="rounded-full border border-line px-3 py-1"
+            className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 font-semibold text-white"
             target="_blank"
             rel="noreferrer"
           >
@@ -130,12 +148,15 @@ export default async function RestaurantPage({ params }: PageProps) {
           rather than stacked full-width, so the page reads in one screenful
           instead of a long scroll of sequential sections. */}
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className="hidden sm:block lg:sticky lg:top-20 lg:self-start">
           <RestaurantPhoto
             src={restaurant.photo_url}
             alt={restaurant.name}
             className="aspect-[3/4] w-full max-w-xs rounded-xl bg-linen-2 object-cover shadow-[0_1px_4px_rgba(23,27,32,0.06)] lg:max-w-none"
           />
+          <div className="mt-3">
+            <SaveButton kind="restaurant" item={restaurant} />
+          </div>
         </div>
 
         <div className="flex flex-col gap-8">

@@ -1,4 +1,4 @@
-import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { DishVisual } from "@/components/DishVisual";
 import { formatDollars, formatPrice } from "@/lib/format";
 import { oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import type { MenuItem } from "@/lib/types";
@@ -33,10 +33,10 @@ export function DishGroupCard({
             onClick={() => onOpen(item)}
             className="flex items-center gap-2.5 py-2 text-left text-sm"
           >
-            <RestaurantPhoto
-              src={item.photo_url}
-              alt={item.restaurant_name}
-              className="size-9 shrink-0 rounded-md object-cover"
+            <DishVisual
+              category={item.canonical_category}
+              name={item.raw_name}
+              className="size-9 rounded-md"
             />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-ink">{item.restaurant_name}</span>

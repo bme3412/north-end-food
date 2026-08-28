@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Store, Utensils } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -18,7 +18,9 @@ import { groupItemsByDish } from "@/lib/dishGroups";
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
+  filtersFromSearchParams,
   filtersToParams,
+  filtersToSearchParams,
   type FilterState,
 } from "@/lib/filters";
 import { NORTH_END_CENTER, haversineMiles } from "@/lib/geo";
@@ -32,7 +34,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   loading: () => <div className="h-full min-h-[280px] animate-pulse bg-linen-2" />,
 });
 
-export function SearchWorkspace() {
+export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTab?: "map" | "list" }) {
   const { asOf, openNowEnabled } = useAsOfTime();
   const { mode: serviceMode } = useServiceMode();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -47,15 +49,35 @@ export function SearchWorkspace() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [groupByDish, setGroupByDish] = useState(true);
-  const [mobileTab, setMobileTab] = useState<"map" | "list">("map");
+  const [mobileTab, setMobileTab] = useState<"map" | "list">(initialMobileTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const urlReady = useRef(false);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      setFilters(filtersFromSearchParams(params));
+      const requestedView = params.get("view");
+      if (requestedView === "map" || requestedView === "list") setMobileTab(requestedView);
+      urlReady.current = true;
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  useEffect(() => {
+    if (!urlReady.current) return;
+    const params = filtersToSearchParams(filters, mobileTab);
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }, [filters, mobileTab]);
 
   useEffect(() => {
     getFilterMeta().then(setMeta).catch(() => undefined);
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const handle = window.setTimeout(() => {
       setLoading(true);
       listMenuItems({
@@ -63,7 +85,8 @@ export function SearchWorkspace() {
         ...asOfTimeToParams(asOf),
         ...serviceModeToParams(serviceMode),
         open_now: openNowEnabled ? "true" : undefined,
-      })
+        limit: "160",
+      }, controller.signal)
         .then((data) => {
           setItems(data.items);
           setPlaces(data.places);
@@ -72,10 +95,17 @@ export function SearchWorkspace() {
           setResolvedDish(data.resolved_dish);
           setError(null);
         })
-        .catch((err: Error) => setError(err.message))
-        .finally(() => setLoading(false));
+        .catch((err: Error) => {
+          if (err.name !== "AbortError") setError(err.message);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
     }, 180);
-    return () => window.clearTimeout(handle);
+    return () => {
+      window.clearTimeout(handle);
+      controller.abort();
+    };
   }, [filters, asOf, openNowEnabled, serviceMode]);
 
   function selectPlace(id: string | null) {
@@ -205,7 +235,7 @@ export function SearchWorkspace() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-[50px] flex flex-col overflow-hidden">
+    <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] top-[50px] flex flex-col overflow-hidden md:bottom-0">
       <div className="shrink-0 border-b border-line">
         <FilterPanel
           filters={filters}
@@ -357,7 +387,7 @@ export function SearchWorkspace() {
       </div>
 
       {/* Mobile tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-card/95 backdrop-blur-md lg:hidden">
+      <nav className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-20 flex border-t border-line bg-card/95 backdrop-blur-md md:bottom-0 lg:hidden">
         <MobileTab active={mobileTab === "map"} onClick={() => setMobileTab("map")} label="Map" />
         <MobileTab
           active={mobileTab === "list"}

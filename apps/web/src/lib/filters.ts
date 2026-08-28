@@ -30,6 +30,38 @@ export const DEFAULT_FILTERS: FilterState = {
   restaurantId: "",
 };
 
+function listParam(params: URLSearchParams, key: string): string[] {
+  return (params.get(key) ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+}
+
+export function filtersFromSearchParams(params: URLSearchParams): FilterState {
+  const sort = params.get("sort");
+  return {
+    q: params.get("q") ?? "",
+    categories: listParam(params, "category"),
+    subcategories: listParam(params, "subcategory"),
+    protein: listParam(params, "protein"),
+    proteinMode: params.get("protein_mode") === "all" ? "all" : "any",
+    ingredients: listParam(params, "ingredient"),
+    ingredientMode: params.get("ingredient_mode") === "all" ? "all" : "any",
+    dietary: listParam(params, "dietary"),
+    minPrice: params.get("min_price") ?? "",
+    maxPrice: params.get("max_price") ?? "",
+    pricedOnly: params.get("priced_only") === "true",
+    sort: sort === "price" || sort === "name" ? sort : "relevance",
+    restaurantId: params.get("restaurant_id") ?? "",
+  };
+}
+
+export function filtersToSearchParams(filters: FilterState, view?: "map" | "list"): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filtersToParams(filters))) {
+    if (value && !(key === "sort" && value === "relevance")) params.set(key, value);
+  }
+  if (view && view !== "list") params.set("view", view);
+  return params;
+}
+
 export function filtersToParams(filters: FilterState): Record<string, string | undefined> {
   return {
     q: filters.q || undefined,
