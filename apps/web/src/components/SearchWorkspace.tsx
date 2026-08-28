@@ -163,7 +163,11 @@ export function SearchWorkspace() {
           <CategoryFocusPage
             key={categoryFocus}
             category={categoryFocus}
+            places={places}
+            items={visibleItems}
             onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+            onOpenItem={setSelectedItem}
+            onBrowseAll={() => setFilters((current) => ({ ...current, q: "", categories: [categoryFocus] }))}
           />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
