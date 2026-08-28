@@ -377,7 +377,7 @@ def list_menu_items(
     db: Session = Depends(get_db),
 ) -> MenuItemList:
     parsed = parse_query(q)
-    resolved_category, resolved_dish = resolve_search_intent(db, q)
+    intent = resolve_search_intent(db, q)
     medians = dish_and_category_medians(db)
     stmt = item_with_source_query(db)
     stmt = _apply_filters(
@@ -500,8 +500,10 @@ def list_menu_items(
         places=places,
         parsed_tokens=parsed.tokens,
         parsed_pizza_serving=parsed.pizza_serving,
-        resolved_category=resolved_category,
-        resolved_dish=resolved_dish,
+        resolved_category=intent.category,
+        resolved_dish=intent.dish,
+        resolved_restaurant_id=intent.restaurant_id,
+        resolved_restaurant_name=intent.restaurant_name,
     )
 
 

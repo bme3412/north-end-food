@@ -150,6 +150,27 @@ export type MenuItemList = {
   parsed_pizza_serving: "slice" | "whole" | null;
   resolved_category: string | null;
   resolved_dish: string | null;
+  resolved_restaurant_id: string | null;
+  resolved_restaurant_name: string | null;
+};
+
+export type RestaurantSuggestion = {
+  restaurant_id: string;
+  name: string;
+  photo_url: string | null;
+  primary_cuisine: string | null;
+};
+
+export type DishSuggestion = {
+  canonical_dish: string;
+  canonical_name: string;
+  category: string;
+  restaurant_count: number;
+};
+
+export type SearchSuggestions = {
+  restaurants: RestaurantSuggestion[];
+  dishes: DishSuggestion[];
 };
 
 export type SimilarDish = {

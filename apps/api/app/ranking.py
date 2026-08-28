@@ -14,7 +14,7 @@ from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, case, func, or_
 
-from app.models import MenuItem
+from app.models import MenuItem, Restaurant
 from app.queries import dish_match_clause
 
 # pg_trgm similarity() returns 0..1. 0.25 catches realistic single-word
@@ -68,6 +68,10 @@ def relevance_expressions(tokens: list[str]):
             MenuItem.canonical_dish.ilike(like),
             dish_match_clause(token),
         )
+        # Whole-word on the restaurant name, not ILIKE: "pizza" should not
+        # promote every item at Pizzeria Regina, but "Neptune" / "Oyster"
+        # should promote that restaurant's items above description/category hits.
+        restaurant_match = Restaurant.name.op("~*")(fr"\m{re.escape(token)}\M")
         description_match = or_(
             MenuItem.raw_description.ilike(like),
             func.similarity(func.coalesce(MenuItem.raw_description, ""), token) > SIMILARITY_THRESHOLD,
@@ -78,9 +82,10 @@ def relevance_expressions(tokens: list[str]):
                 (and_(whole_word, MenuItem.canonical_dish.is_not(None)), 0),
                 (fuzzy_name, 1),
                 (dish_match, 2),
-                (description_match, 3),
-                (category_match, 4),
-                else_=5,
+                (restaurant_match, 3),
+                (description_match, 4),
+                (category_match, 5),
+                else_=6,
             )
         )
     intent_tier = token_tiers[0] if len(token_tiers) == 1 else func.greatest(*token_tiers)

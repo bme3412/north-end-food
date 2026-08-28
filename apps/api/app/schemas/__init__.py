@@ -1,12 +1,15 @@
 from app.schemas.menu import (
     CategoryDishOut,
     CategorySummaryOut,
+    DishSuggestionOut,
     MenuItemList,
     MenuItemOut,
     PlaceMatch,
     RestaurantDetail,
     RestaurantExternalIdOut,
+    RestaurantSuggestionOut,
     RestaurantSummary,
+    SearchSuggestionsOut,
     SimilarDishesOut,
     SimilarDishOut,
 )
@@ -14,12 +17,15 @@ from app.schemas.menu import (
 __all__ = [
     "CategoryDishOut",
     "CategorySummaryOut",
+    "DishSuggestionOut",
     "MenuItemList",
     "MenuItemOut",
     "PlaceMatch",
     "RestaurantDetail",
     "RestaurantExternalIdOut",
+    "RestaurantSuggestionOut",
     "RestaurantSummary",
+    "SearchSuggestionsOut",
     "SimilarDishesOut",
     "SimilarDishOut",
 ]

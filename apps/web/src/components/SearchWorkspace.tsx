@@ -47,6 +47,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const [parsedPizzaServing, setParsedPizzaServing] = useState<"slice" | "whole" | null>(null);
   const [resolvedCategory, setResolvedCategory] = useState<string | null>(null);
   const [resolvedDish, setResolvedDish] = useState<string | null>(null);
+  const [resolvedRestaurantId, setResolvedRestaurantId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -96,6 +97,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           setParsedPizzaServing(data.parsed_pizza_serving);
           setResolvedCategory(data.resolved_category);
           setResolvedDish(data.resolved_dish);
+          setResolvedRestaurantId(data.resolved_restaurant_id);
           setError(null);
         })
         .catch((err: Error) => {
@@ -140,6 +142,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
         parsedPizzaServing,
         resolvedCategory,
         resolvedDish,
+        resolvedRestaurantId,
         groupKeys: grouped.map((group) => group.key),
         compareGroupKey,
       }),
@@ -150,10 +153,16 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
       parsedPizzaServing,
       resolvedCategory,
       resolvedDish,
+      resolvedRestaurantId,
       grouped,
       compareGroupKey,
     ],
   );
+
+  useEffect(() => {
+    if (searchView.kind === "restaurant") setGroupByDish(false);
+  }, [searchView.kind]);
+
   const categoryFocus = searchView.kind === "category" ? searchView.category : null;
   const focusGroup =
     searchView.kind === "dish" ? (grouped.find((group) => group.key === searchView.groupKey) ?? null) : null;
@@ -182,7 +191,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   if (categoryFocus) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)]">
-        <div className="border-b border-line">
+        <div className="relative z-30 border-b border-line">
           <FilterPanel
             filters={filters}
             meta={meta}
@@ -216,7 +225,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   if (focusGroup) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)]">
-        <div className="border-b border-line">
+        <div className="relative z-30 border-b border-line">
           <FilterPanel
             filters={filters}
             meta={meta}
@@ -244,8 +253,8 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] top-[50px] flex flex-col overflow-hidden md:bottom-0">
-      <div className="shrink-0 border-b border-line">
+    <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] top-[50px] flex flex-col md:bottom-0">
+      <div className="relative z-30 shrink-0 border-b border-line">
         <FilterPanel
           filters={filters}
           meta={meta}
@@ -264,7 +273,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[clamp(480px,42vw,620px)_1fr]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[clamp(480px,42vw,620px)_1fr]">
         {/* Sidebar: results */}
         <aside
           className={`min-h-0 flex-col overflow-y-auto bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${

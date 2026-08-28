@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers.menu_items import router as menu_items_router
 from app.routers.restaurants import router as restaurants_router
+from app.routers.search import router as search_router
 
 app = FastAPI(
     title="North End Food Graph API",
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(restaurants_router)
 app.include_router(menu_items_router)
+app.include_router(search_router)
 
 
 @app.get("/health")

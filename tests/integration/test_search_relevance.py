@@ -105,3 +105,21 @@ def test_seafood_pasta_surfaces_the_canonical_seafood_pasta_dish(client):
     body = response.json()
     assert body["total"] >= 1
     assert any(item["canonical_dish"] == "SEAFOOD_PASTA" for item in body["items"])
+
+
+def test_restaurant_name_query_resolves_the_place_not_a_dish(client):
+    body = client.get("/menu-items", params={"q": "Neptune Oyster"}).json()
+    assert body["resolved_restaurant_id"] == "NE_0002"
+    assert body["resolved_restaurant_name"] == "Neptune Oyster"
+    assert body["resolved_dish"] is None
+    assert body["resolved_category"] is None
+    assert body["total"] >= 1
+    assert body["places"][0]["restaurant_id"] == "NE_0002"
+    assert all(item["restaurant_id"] == "NE_0002" for item in body["items"])
+
+
+def test_price_qualified_query_does_not_resolve_as_category_or_restaurant(client):
+    body = client.get("/menu-items", params={"q": "pasta under $25"}).json()
+    assert body["resolved_category"] is None
+    assert body["resolved_dish"] is None
+    assert body["resolved_restaurant_id"] is None

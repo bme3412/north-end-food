@@ -2,8 +2,9 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ChevronDown, Search, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
+import { ChevronDown, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
 
+import { SearchBox } from "@/components/SearchBox";
 import { useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { prettyCategory } from "@/lib/format";
@@ -67,31 +68,13 @@ export function FilterPanel({
   return (
     <div className={`bg-card/95 backdrop-blur-sm ${compact ? "px-4 py-1.5" : "p-4"}`}>
       <div className={`flex items-center ${compact ? "gap-4" : "flex-wrap gap-3"}`}>
-        <label className="relative block min-w-0 flex-1 basis-64">
-          <span className="sr-only">Search menus</span>
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted" aria-hidden="true">
-            <Search className="size-4" />
-          </span>
-          <input
-            value={filters.q}
-            onChange={(event) => set("q", event.target.value)}
-            inputMode="search"
-            placeholder="Search North End…"
-            className={`w-full rounded-lg border border-line bg-card pl-9 pr-9 text-sm outline-none ring-primary/20 focus:border-primary focus:ring-2 ${
-              compact ? "h-8" : "h-10"
-            }`}
-          />
-          {filters.q ? (
-            <button
-              type="button"
-              onClick={() => set("q", "")}
-              aria-label="Clear search"
-              className="absolute inset-y-0 right-2 flex items-center px-1 text-muted hover:text-ink"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          ) : null}
-        </label>
+        <SearchBox
+          value={filters.q}
+          onChange={(query) => set("q", query)}
+          placeholder="Search North End…"
+          variant="panel"
+          compact={compact}
+        />
         <p className={`min-w-0 items-center gap-2 whitespace-nowrap text-[10px] text-muted ${compact ? "hidden lg:flex" : "flex flex-wrap"}`}>
           <span className="shrink-0">Try:</span>
           {SUGGESTED_QUERIES.map((query) => (

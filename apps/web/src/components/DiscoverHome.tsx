@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DishVisual } from "@/components/DishVisual";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { SearchBox } from "@/components/SearchBox";
 import { getFilterMeta, listMenuItems, listRestaurants } from "@/lib/api";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { formatPrice, prettyCategory } from "@/lib/format";
@@ -73,9 +74,9 @@ export function DiscoverHome() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-5 sm:px-6 md:pb-12 md:pt-8">
-      <section className="overflow-hidden rounded-[28px] border border-line bg-card shadow-[0_20px_60px_rgba(23,27,32,0.08)]">
+      <section className="rounded-[28px] border border-line bg-card shadow-[0_20px_60px_rgba(23,27,32,0.08)]">
         <div className="grid md:grid-cols-2">
-          <div className="flex flex-col justify-center px-5 py-6 sm:px-8 sm:py-10">
+          <div className="relative z-20 flex flex-col justify-center px-5 py-6 sm:px-8 sm:py-10">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
               <Sparkles className="size-4" aria-hidden="true" /> Boston&apos;s North End
             </p>
@@ -86,18 +87,19 @@ export function DiscoverHome() {
               Compare official menus, prices, and open restaurants across the neighborhood.
             </p>
             <form
-              className="mt-6 flex min-h-12 items-center rounded-2xl border border-line bg-linen px-4 shadow-inner focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
+              className="relative mt-6 flex min-h-12 items-center rounded-2xl border border-line bg-linen px-4 shadow-inner focus-within:border-ink/30"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitSearch();
               }}
             >
               <Search className="size-5 shrink-0 text-muted" aria-hidden="true" />
-              <input
+              <SearchBox
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={setQuery}
                 placeholder="Search dishes, restaurants, or ingredients"
-                className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+                variant="hero"
+                ariaLabel="Search dishes, restaurants, or ingredients"
               />
               <button type="submit" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -105,7 +107,7 @@ export function DiscoverHome() {
               </button>
             </form>
           </div>
-          <div className="relative min-h-52 md:min-h-full">
+          <div className="relative min-h-52 overflow-hidden rounded-b-[28px] md:min-h-full md:rounded-none md:rounded-r-[28px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/paul-revere-mall.jpg"

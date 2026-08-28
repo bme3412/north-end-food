@@ -9,6 +9,7 @@ const base = {
   parsedPizzaServing: null as string | null,
   resolvedCategory: null as string | null,
   resolvedDish: null as string | null,
+  resolvedRestaurantId: null as string | null,
   groupKeys: ["CARBONARA"],
   compareGroupKey: null as string | null,
 };
@@ -53,6 +54,27 @@ describe("pickSearchView", () => {
         groupKeys: ["RAW_OYSTERS", "LOBSTER_RAVIOLI", "CALAMARI"],
       }),
     ).toEqual({ kind: "list" });
+  });
+
+  it("switches to the restaurants tab when the query uniquely names a place", () => {
+    expect(
+      pickSearchView({
+        ...base,
+        q: "Neptune Oyster",
+        resolvedRestaurantId: "NE_0002",
+        groupKeys: ["RAW_OYSTERS", "LOBSTER_RAVIOLI", "CALAMARI"],
+      }),
+    ).toEqual({ kind: "restaurant" });
+  });
+
+  it("keeps a dish match on the dish view even if a restaurant id is also present", () => {
+    expect(
+      pickSearchView({
+        ...base,
+        resolvedDish: "CARBONARA",
+        resolvedRestaurantId: "NE_0002",
+      }),
+    ).toEqual({ kind: "dish", groupKey: "CARBONARA" });
   });
 
   it("stays on the list when one pizza has multiple serving groups", () => {

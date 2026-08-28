@@ -118,9 +118,14 @@ body {
   color: var(--ink);
 }
 
-:focus-visible {
+:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

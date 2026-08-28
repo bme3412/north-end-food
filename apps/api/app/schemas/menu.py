@@ -179,14 +179,35 @@ class MenuItemList(BaseModel):
     places: list[PlaceMatch] = Field(default_factory=list)
     parsed_tokens: list[str] = Field(default_factory=list)
     parsed_pizza_serving: str | None = None
-    # At most one is set. resolved_category means the query named a whole
-    # food category ("pasta") -- the frontend should show the
-    # category-browse page (GET /menu-items/category-summary) instead of
-    # picking one item out of `items` as "the" result. resolved_dish means
+    # At most one of category/dish/restaurant is set. resolved_category
+    # means the query named a whole food category ("pasta") -- the
+    # frontend should show the category-browse page. resolved_dish means
     # the query named one specific dish exactly (by canonical name or
-    # alias, e.g. "carbonara") -- today's single-dish comparison page.
+    # alias, e.g. "carbonara"). resolved_restaurant_id means the query
+    # uniquely named a restaurant -- stay on /search, Restaurants tab.
     resolved_category: str | None = None
     resolved_dish: str | None = None
+    resolved_restaurant_id: str | None = None
+    resolved_restaurant_name: str | None = None
+
+
+class RestaurantSuggestionOut(BaseModel):
+    restaurant_id: str
+    name: str
+    photo_url: str | None = None
+    primary_cuisine: str | None = None
+
+
+class DishSuggestionOut(BaseModel):
+    canonical_dish: str
+    canonical_name: str
+    category: str
+    restaurant_count: int
+
+
+class SearchSuggestionsOut(BaseModel):
+    restaurants: list[RestaurantSuggestionOut] = Field(default_factory=list)
+    dishes: list[DishSuggestionOut] = Field(default_factory=list)
 
 
 class SimilarDishOut(BaseModel):

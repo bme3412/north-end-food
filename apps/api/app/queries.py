@@ -323,38 +323,160 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
     )
 
 
-def resolve_search_intent(db: Session, raw_query: str | None) -> tuple[str | None, str | None]:
+SUGGEST_LIMIT = 5
+SUGGEST_MIN_CHARS = 2
+SUGGEST_SIMILARITY = 0.25
+
+
+@dataclass(frozen=True)
+class SearchIntent:
+    category: str | None = None
+    dish: str | None = None
+    restaurant_id: str | None = None
+    restaurant_name: str | None = None
+
+
+@dataclass(frozen=True)
+class RestaurantSuggestion:
+    restaurant_id: str
+    name: str
+    photo_url: str | None
+    primary_cuisine: str | None
+
+
+@dataclass(frozen=True)
+class DishSuggestion:
+    canonical_dish: str
+    canonical_name: str
+    category: str
+    restaurant_count: int
+
+
+@dataclass(frozen=True)
+class SearchSuggestions:
+    restaurants: list[RestaurantSuggestion]
+    dishes: list[DishSuggestion]
+
+
+def _normalize_search_text(raw: str) -> str:
+    normalized = re.sub(r"[^a-z0-9 ]", " ", raw.strip().lower())
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _unique_restaurant_match(db: Session, normalized: str) -> tuple[str | None, str | None]:
+    matches = [
+        (restaurant_id, name)
+        for restaurant_id, name in db.execute(
+            select(Restaurant.restaurant_id, Restaurant.name).where(Restaurant.active.is_(True))
+        ).all()
+        if _normalize_search_text(name) == normalized
+    ]
+    if len(matches) != 1:
+        return None, None
+    return matches[0]
+
+
+def suggest_search(db: Session, raw_query: str | None, *, limit: int = SUGGEST_LIMIT) -> SearchSuggestions:
+    """Prefix/substring suggestions for the search combobox -- restaurants
+    and canonical dishes only, not a full ranked menu-item search.
+    """
+    if not raw_query or len(raw_query.strip()) < SUGGEST_MIN_CHARS:
+        return SearchSuggestions(restaurants=[], dishes=[])
+
+    q = raw_query.strip()
+    like = f"%{q}%"
+
+    restaurant_rows = db.scalars(
+        select(Restaurant)
+        .where(
+            Restaurant.active.is_(True),
+            or_(
+                Restaurant.name.ilike(like),
+                func.similarity(Restaurant.name, q) > SUGGEST_SIMILARITY,
+            ),
+        )
+        .order_by(func.similarity(Restaurant.name, q).desc(), Restaurant.name)
+        .limit(limit)
+    ).all()
+    restaurants = [
+        RestaurantSuggestion(
+            restaurant_id=row.restaurant_id,
+            name=row.name,
+            photo_url=row.photo_url,
+            primary_cuisine=row.primary_cuisine,
+        )
+        for row in restaurant_rows
+    ]
+
+    latest = latest_snapshot_ids(db).subquery()
+    dish_counts = (
+        select(
+            MenuItem.canonical_dish,
+            func.count(func.distinct(MenuItem.restaurant_id)).label("restaurant_count"),
+        )
+        .where(MenuItem.menu_snapshot_id.in_(select(latest)), MenuItem.canonical_dish.is_not(None))
+        .group_by(MenuItem.canonical_dish)
+        .subquery()
+    )
+    dish_rows = db.execute(
+        select(CanonicalDish, func.coalesce(dish_counts.c.restaurant_count, 0))
+        .outerjoin(dish_counts, dish_counts.c.canonical_dish == CanonicalDish.canonical_dish_id)
+        .where(
+            or_(
+                CanonicalDish.canonical_name.ilike(like),
+                func.array_to_string(CanonicalDish.aliases, " ").ilike(like),
+                func.similarity(CanonicalDish.canonical_name, q) > SUGGEST_SIMILARITY,
+            )
+        )
+        .order_by(
+            func.similarity(CanonicalDish.canonical_name, q).desc(),
+            CanonicalDish.canonical_name,
+        )
+        .limit(limit)
+    ).all()
+    dishes = [
+        DishSuggestion(
+            canonical_dish=dish.canonical_dish_id,
+            canonical_name=dish.canonical_name,
+            category=dish.category,
+            restaurant_count=int(count),
+        )
+        for dish, count in dish_rows
+    ]
+    return SearchSuggestions(restaurants=restaurants, dishes=dishes)
+
+
+def resolve_search_intent(db: Session, raw_query: str | None) -> SearchIntent:
     """Classify a free-text query as naming a whole food category ("pasta"),
-    one specific dish ("carbonara"), or neither -- returns
-    (resolved_category, resolved_dish), at most one set.
+    one specific dish ("carbonara"), a unique restaurant, or none of those.
 
     This is deliberately a whole-query exact match against real
-    CanonicalDish/category names, not a fuzzy per-token heuristic: a query
-    that merely *contains* a category word (e.g. "pasta under $25") should
-    keep behaving like today's keyword search, not jump to a category
-    browse page. Only "pasta" itself, or "carbonara", etc., resolve.
+    CanonicalDish/category/restaurant names, not a fuzzy per-token heuristic:
+    a query that merely *contains* a category word (e.g. "pasta under $25")
+    should keep behaving like keyword search, not jump to a category browse
+    page. Only "pasta" itself, or "carbonara", or "Neptune Oyster", resolve.
 
-    A dish match wins over a category match when both apply (rare -- a
-    category and a dish sharing a word) since it's the more specific
-    interpretation. This is what routes "pasta" to the category-browse
-    page (GET /menu-items/category-summary) while "carbonara" still goes
-    straight to that dish's single-dish comparison page. Broader keyword
-    searches stay on the grouped list so sibling dishes stay visible -- see
+    A dish match wins over a restaurant or category match when both apply
+    (rare) since it's the more specific interpretation. Restaurant wins over
+    category. Broader keyword searches stay on the grouped list -- see
     SearchWorkspace.tsx / pickSearchView().
     """
     if not raw_query or not raw_query.strip():
-        return None, None
-    normalized = re.sub(r"[^a-z0-9 ]", " ", raw_query.strip().lower())
-    normalized = re.sub(r"\s+", " ", normalized).strip()
+        return SearchIntent()
+    normalized = _normalize_search_text(raw_query)
     if not normalized:
-        return None, None
+        return SearchIntent()
 
     for dish_id, canonical_name, aliases in db.execute(
         select(CanonicalDish.canonical_dish_id, CanonicalDish.canonical_name, CanonicalDish.aliases)
     ).all():
         candidates = {canonical_name.strip().lower()} | {alias.strip().lower() for alias in (aliases or [])}
         if normalized in candidates:
-            return None, dish_id
+            return SearchIntent(dish=dish_id)
+
+    restaurant_id, restaurant_name = _unique_restaurant_match(db, normalized)
+    if restaurant_id:
+        return SearchIntent(restaurant_id=restaurant_id, restaurant_name=restaurant_name)
 
     categories = {
         row[0]
@@ -371,9 +493,9 @@ def resolve_search_intent(db: Session, raw_query: str | None) -> tuple[str | Non
         candidates.add(normalized[:-1].replace(" ", "_"))
     for candidate in candidates:
         if candidate in categories:
-            return candidate, None
+            return SearchIntent(category=candidate)
 
-    return None, None
+    return SearchIntent()
 
 
 def price_profile(db: Session, restaurant_id: str, *, top_categories: int = 3) -> PriceProfile:

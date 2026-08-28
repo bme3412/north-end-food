@@ -1,6 +1,7 @@
 export type SearchView =
   | { kind: "category"; category: string }
   | { kind: "dish"; groupKey: string }
+  | { kind: "restaurant" }
   | { kind: "list" };
 
 export function pickSearchView({
@@ -10,6 +11,7 @@ export function pickSearchView({
   parsedPizzaServing,
   resolvedCategory,
   resolvedDish,
+  resolvedRestaurantId,
   groupKeys,
   compareGroupKey,
 }: {
@@ -19,6 +21,7 @@ export function pickSearchView({
   parsedPizzaServing: string | null;
   resolvedCategory: string | null;
   resolvedDish: string | null;
+  resolvedRestaurantId: string | null;
   groupKeys: string[];
   compareGroupKey: string | null;
 }): SearchView {
@@ -41,6 +44,10 @@ export function pickSearchView({
 
   if (compareGroupKey && groupKeys.includes(compareGroupKey)) {
     return { kind: "dish", groupKey: compareGroupKey };
+  }
+
+  if (resolvedRestaurantId) {
+    return { kind: "restaurant" };
   }
 
   return { kind: "list" };
