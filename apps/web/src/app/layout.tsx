@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </SavedProvider>
           </ServiceModeProvider>
         </AsOfTimeProvider>
+        <Analytics />
       </body>
     </html>
   );
