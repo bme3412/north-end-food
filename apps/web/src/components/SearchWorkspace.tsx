@@ -88,7 +88,6 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
         ...asOfTimeToParams(asOf),
         ...serviceModeToParams(serviceMode),
         open_now: openNowEnabled ? "true" : undefined,
-        limit: "160",
       }, controller.signal)
         .then((data) => {
           setItems(data.items);
