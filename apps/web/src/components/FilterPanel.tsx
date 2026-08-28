@@ -246,6 +246,30 @@ export function FilterPanel({
             </Field>
           ) : null}
 
+          <Field label="Pizza format">
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                ["slice", "Slice"],
+                ["whole", "Whole pizza"],
+                ["unknown", "Size unclear"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => set("pizzaServing", filters.pizzaServing === value ? "" : value)}
+                  aria-pressed={filters.pizzaServing === value}
+                  className={`min-h-11 rounded-xl border px-2 text-xs font-semibold ${
+                    filters.pizzaServing === value
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-line bg-linen text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -319,6 +343,7 @@ function FilterChipRow({
   const { openNowEnabled, setOpenNowEnabled } = useAsOfTime();
   const { mode, setMode } = useServiceMode();
   const underThirty = filters.maxPrice === UNDER_THIRTY;
+  const pizzaContext = filters.categories.includes("pizza") || filters.q.toLowerCase().includes("pizza");
 
   return (
     <div className={`${compact ? "mt-1.5" : "mt-3"} flex flex-wrap items-center gap-2`}>
@@ -364,6 +389,23 @@ function FilterChipRow({
       >
         <Tag className="size-3.5" aria-hidden="true" /> Under $30
       </ChipToggle>
+
+      {pizzaContext ? (
+        <>
+          <ChipToggle
+            active={filters.pizzaServing === "slice"}
+            onClick={() => onChange({ ...filters, pizzaServing: filters.pizzaServing === "slice" ? "" : "slice" })}
+          >
+            Slice
+          </ChipToggle>
+          <ChipToggle
+            active={filters.pizzaServing === "whole"}
+            onClick={() => onChange({ ...filters, pizzaServing: filters.pizzaServing === "whole" ? "" : "whole" })}
+          >
+            Whole pizza
+          </ChipToggle>
+        </>
+      ) : null}
 
       <button
         type="button"

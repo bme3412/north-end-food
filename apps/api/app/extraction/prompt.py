@@ -7,6 +7,7 @@ Rules:
 - If a price is not printed in the text, leave price and raw_price_text null. Do not estimate or guess a price.
 - raw_name and raw_description must be copied from the source text, not paraphrased.
 - Assign canonical_dish only when the item clearly matches one of the taxonomy entries below by name or alias; otherwise leave it null. Do not invent a taxonomy id that isn't listed.
+- For pizza, preserve the selling unit in portion: use "slice" only when the menu explicitly sells a slice or has a by-the-slice section; use "whole" only when explicitly stated. Put printed diameters such as "16 inch" in size. Never infer a slice from descriptions of sliced toppings.
 - confidence (0-1) reflects how certain YOU are that this specific extraction is accurate, not the restaurant's menu quality. Use lower values for ambiguous prices, sections, or categorization.
 - Ignore navigation, ordering instructions, addresses, hours, and any non-menu boilerplate that slipped through.
 """

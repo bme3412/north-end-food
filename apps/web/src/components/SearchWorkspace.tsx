@@ -43,6 +43,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const [items, setItems] = useState<MenuItem[]>([]);
   const [places, setPlaces] = useState<PlaceMatch[]>([]);
   const [parsedTokens, setParsedTokens] = useState<string[]>([]);
+  const [parsedPizzaServing, setParsedPizzaServing] = useState<"slice" | "whole" | null>(null);
   const [resolvedCategory, setResolvedCategory] = useState<string | null>(null);
   const [resolvedDish, setResolvedDish] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           setItems(data.items);
           setPlaces(data.places);
           setParsedTokens(data.parsed_tokens);
+          setParsedPizzaServing(data.parsed_pizza_serving);
           setResolvedCategory(data.resolved_category);
           setResolvedDish(data.resolved_dish);
           setError(null);
@@ -130,9 +132,9 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   // the backend guarantees resolved_category/resolved_dish are never both
   // set, so at most one of categoryFocus/focusGroup fires.
   const categoryFocus = useMemo(() => {
-    if (!filters.q.trim() || selectedPlaceId) return null;
+    if (!filters.q.trim() || selectedPlaceId || filters.pizzaServing || parsedPizzaServing) return null;
     return resolvedCategory;
-  }, [filters.q, selectedPlaceId, resolvedCategory]);
+  }, [filters.q, filters.pizzaServing, selectedPlaceId, resolvedCategory, parsedPizzaServing]);
 
   // Text search is intent-first: groupItemsByDish preserves the API's
   // relevance order, so the first group is the best interpretation of the
@@ -143,12 +145,22 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   // Empty/structured-filter browsing keeps the general dishes-and-map
   // workspace below.
   const focusGroup = useMemo(() => {
-    if (!filters.q.trim() || selectedPlaceId || grouped.length === 0 || categoryFocus) return null;
+    if (
+      !filters.q.trim() ||
+      selectedPlaceId ||
+      grouped.length === 0 ||
+      categoryFocus ||
+      parsedPizzaServing ||
+      filters.pizzaServing
+    ) return null;
     if (resolvedDish) {
-      return grouped.find((group) => group.key === resolvedDish) ?? grouped[0];
+      const exactDishGroups = grouped.filter(
+        (group) => group.key === resolvedDish || group.key.startsWith(`${resolvedDish}::`),
+      );
+      return exactDishGroups.length === 1 ? exactDishGroups[0] : null;
     }
     return grouped[0];
-  }, [filters.q, selectedPlaceId, grouped, categoryFocus, resolvedDish]);
+  }, [filters.q, filters.pizzaServing, selectedPlaceId, grouped, categoryFocus, resolvedDish, parsedPizzaServing]);
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;

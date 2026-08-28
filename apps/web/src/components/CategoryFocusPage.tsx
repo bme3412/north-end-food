@@ -126,9 +126,17 @@ export function CategoryFocusPage({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {summary.dishes.map((dish) => (
                 <button
-                  key={dish.canonical_dish}
+                  key={`${dish.canonical_dish}:${dish.pizza_serving ?? ""}`}
                   type="button"
-                  onClick={() => onSelectDish(dish.canonical_name)}
+                  onClick={() =>
+                    onSelectDish(
+                      dish.pizza_serving === "slice"
+                        ? `slice ${dish.canonical_name}`
+                        : dish.pizza_serving === "whole"
+                          ? `whole ${dish.canonical_name}`
+                          : dish.canonical_name,
+                    )
+                  }
                   className="flex flex-col gap-2 rounded-xl border border-line bg-card p-3 text-left shadow-[0_1px_3px_rgba(23,27,32,0.04)] transition-colors hover:border-primary/30 hover:bg-primary-soft/30"
                 >
                   <div
@@ -138,7 +146,16 @@ export function CategoryFocusPage({
                     <Utensils className="size-4" strokeWidth={1.5} />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-[12px] font-semibold text-ink">{dish.canonical_name}</p>
+                    <p className="truncate text-[12px] font-semibold text-ink">
+                      {dish.canonical_name}
+                      {dish.pizza_serving === "slice"
+                        ? " — Slice"
+                        : dish.pizza_serving === "whole"
+                          ? " — Whole"
+                          : dish.pizza_serving === "unknown"
+                            ? " — Size unclear"
+                            : ""}
+                    </p>
                     <p className="mt-0.5 text-[10px] text-muted">
                       {dish.restaurant_count} restaurant{dish.restaurant_count === 1 ? "" : "s"}
                     </p>

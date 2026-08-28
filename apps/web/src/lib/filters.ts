@@ -12,6 +12,7 @@ export type FilterState = {
   pricedOnly: boolean;
   sort: "relevance" | "price" | "name";
   restaurantId: string;
+  pizzaServing: "" | "slice" | "whole" | "unknown";
 };
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -28,6 +29,7 @@ export const DEFAULT_FILTERS: FilterState = {
   pricedOnly: false,
   sort: "relevance",
   restaurantId: "",
+  pizzaServing: "",
 };
 
 function listParam(params: URLSearchParams, key: string): string[] {
@@ -50,6 +52,10 @@ export function filtersFromSearchParams(params: URLSearchParams): FilterState {
     pricedOnly: params.get("priced_only") === "true",
     sort: sort === "price" || sort === "name" ? sort : "relevance",
     restaurantId: params.get("restaurant_id") ?? "",
+    pizzaServing:
+      params.get("pizza_serving") === "slice" || params.get("pizza_serving") === "whole" || params.get("pizza_serving") === "unknown"
+        ? (params.get("pizza_serving") as FilterState["pizzaServing"])
+        : "",
   };
 }
 
@@ -77,6 +83,7 @@ export function filtersToParams(filters: FilterState): Record<string, string | u
     priced_only: filters.pricedOnly ? "true" : undefined,
     sort: filters.sort,
     restaurant_id: filters.restaurantId || undefined,
+    pizza_serving: filters.pizzaServing || undefined,
   };
 }
 
@@ -91,5 +98,6 @@ export function activeFilterCount(filters: FilterState): number {
   if (filters.minPrice || filters.maxPrice) count += 1;
   if (filters.pricedOnly) count += 1;
   if (filters.restaurantId) count += 1;
+  if (filters.pizzaServing) count += 1;
   return count;
 }

@@ -74,3 +74,21 @@ def test_price_phrase_removed_from_tokens_leaves_rest_intact():
     assert parsed.max_price == Decimal("25")
     assert parsed.dietary == ("vegetarian", "gluten-free")
     assert parsed.tokens == ["pizza"]
+
+
+def test_pizza_slice_query_extracts_serving_unit():
+    parsed = parse_query("a slice of pizza under $8")
+    assert parsed.tokens == ["pizza"]
+    assert parsed.pizza_serving == "slice"
+    assert parsed.max_price == Decimal("8")
+
+
+def test_whole_pizza_query_extracts_serving_unit():
+    parsed = parse_query("whole margherita pizza")
+    assert parsed.tokens == ["margherita", "pizza"]
+    assert parsed.pizza_serving == "whole"
+
+
+def test_sliced_non_pizza_food_is_not_treated_as_pizza_serving():
+    parsed = parse_query("thinly sliced prosciutto")
+    assert parsed.pizza_serving is None

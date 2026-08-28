@@ -235,3 +235,44 @@ def test_list_pagination_limits_items_without_hiding_map_places(client):
     assert len(page["items"]) == 3
     assert page["items"] == full["items"][1:4]
     assert page["places"] == full["places"]
+
+
+def test_pizza_serving_filter_keeps_slice_and_whole_price_benchmarks_separate(client, db_session):
+    from sqlalchemy import select
+
+    from app.models import MenuItem
+
+    pizzas = list(
+        db_session.scalars(
+            select(MenuItem).where(
+                MenuItem.canonical_category == "pizza",
+                MenuItem.canonical_dish == "CHEESE_PIZZA",
+            )
+        )
+    )
+    assert len(pizzas) >= 2
+    slice_item, whole_item = pizzas[:2]
+    slice_item.raw_name = "Cheese Pizza Slice"
+    slice_item.portion = "slice"
+    slice_item.size = None
+    slice_item.price = Decimal("5")
+    whole_item.portion = "whole"
+    whole_item.size = "16 inch"
+    whole_item.price = Decimal("25")
+    db_session.commit()
+
+    slices = client.get(
+        "/menu-items",
+        params={"canonical_dish": "CHEESE_PIZZA", "pizza_serving": "slice"},
+    ).json()
+    whole = client.get(
+        "/menu-items",
+        params={"canonical_dish": "CHEESE_PIZZA", "pizza_serving": "whole"},
+    ).json()
+
+    assert slices["total"] == 1
+    assert slices["items"][0]["pizza_serving"] == "slice"
+    assert Decimal(slices["items"][0]["north_end_median_price"]) == Decimal("5")
+    assert whole["total"] >= 1
+    assert all(item["pizza_serving"] == "whole" for item in whole["items"])
+    assert all(Decimal(item["north_end_median_price"]) != Decimal("5") for item in whole["items"])

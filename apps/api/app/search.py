@@ -18,6 +18,7 @@ STOPWORDS = {
     "with",
     "at",
     "from",
+    "by",
 }
 
 BETWEEN = re.compile(
@@ -34,6 +35,9 @@ OVER = re.compile(
 )
 BARE_MAX = re.compile(r"(?:<=|<)\s*\$?\s*(\d+(?:\.\d+)?)")
 BARE_MIN = re.compile(r"(?:>=|>)\s*\$?\s*(\d+(?:\.\d+)?)")
+PIZZA_WORD = re.compile(r"\bpizzas?\b", re.I)
+PIZZA_SLICE = re.compile(r"\b(?:slice|slices|by the slice)\b", re.I)
+WHOLE_PIZZA = re.compile(r"\b(?:whole|full|pie)\b", re.I)
 
 DIET_ALIASES = {
     "vegetarian": "vegetarian",
@@ -51,6 +55,7 @@ class ParsedQuery:
     min_price: Decimal | None = None
     max_price: Decimal | None = None
     dietary: tuple[str, ...] = ()
+    pizza_serving: str | None = None
 
 
 def parse_query(raw: str | None) -> ParsedQuery:
@@ -60,6 +65,14 @@ def parse_query(raw: str | None) -> ParsedQuery:
     text = raw.strip()
     min_price: Decimal | None = None
     max_price: Decimal | None = None
+    pizza_serving: str | None = None
+
+    if PIZZA_WORD.search(text) and PIZZA_SLICE.search(text):
+        pizza_serving = "slice"
+        text = PIZZA_SLICE.sub(" ", text)
+    elif PIZZA_WORD.search(text) and WHOLE_PIZZA.search(text):
+        pizza_serving = "whole"
+        text = WHOLE_PIZZA.sub(" ", text)
 
     match = BETWEEN.search(text)
     if match:
@@ -101,4 +114,5 @@ def parse_query(raw: str | None) -> ParsedQuery:
         min_price=min_price,
         max_price=max_price,
         dietary=tuple(dietary),
+        pizza_serving=pizza_serving,
     )

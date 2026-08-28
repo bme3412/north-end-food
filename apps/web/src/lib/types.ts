@@ -92,6 +92,7 @@ export type MenuItem = {
   dietary_tags: string[] | null;
   portion: string | null;
   size: string | null;
+  pizza_serving: "slice" | "whole" | "unknown" | null;
   seasonal: boolean;
   market_price: boolean;
   available: boolean;
@@ -146,6 +147,7 @@ export type MenuItemList = {
   items: MenuItem[];
   places: PlaceMatch[];
   parsed_tokens: string[];
+  parsed_pizza_serving: "slice" | "whole" | null;
   resolved_category: string | null;
   resolved_dish: string | null;
 };
@@ -164,6 +166,7 @@ export type SimilarDishesResponse = {
 export type CategoryDish = {
   canonical_dish: string;
   canonical_name: string;
+  pizza_serving: "slice" | "whole" | "unknown" | null;
   restaurant_count: number;
   min_price: string | null;
   max_price: string | null;

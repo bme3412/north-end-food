@@ -23,6 +23,7 @@ from app.ranking import balanced_secondary_score, fuzzy_token_clause, relevance_
 from app.schemas import MenuItemList, MenuItemOut
 from app.schemas.menu import CategoryDishOut, CategorySummaryOut, PlaceMatch, SimilarDishesOut, SimilarDishOut
 from app.search import parse_query
+from app.servings import classify_pizza_serving
 
 router = APIRouter(prefix="/menu-items", tags=["menu-items"])
 
@@ -43,7 +44,18 @@ def _to_out(
     at_time: str | None = None,
     at_until: str | None = None,
 ) -> MenuItemOut:
-    median = medians.median_for(canonical_dish=item.canonical_dish, canonical_category=item.canonical_category)
+    pizza_serving = classify_pizza_serving(
+        canonical_category=item.canonical_category,
+        raw_name=item.raw_name,
+        menu_section=item.menu_section,
+        portion=item.portion,
+        size=item.size,
+    )
+    median = medians.median_for(
+        canonical_dish=item.canonical_dish,
+        canonical_category=item.canonical_category,
+        pizza_serving=pizza_serving,
+    )
     pct_vs_median: float | None = None
     if median and item.price is not None and not item.market_price:
         pct_vs_median = float((item.price / median - 1) * 100)
@@ -71,6 +83,7 @@ def _to_out(
         dietary_tags=item.dietary_tags,
         portion=item.portion,
         size=item.size,
+        pizza_serving=pizza_serving,
         seasonal=item.seasonal,
         market_price=item.market_price,
         available=item.available,
@@ -314,6 +327,7 @@ def get_category_summary(
             CategoryDishOut(
                 canonical_dish=dish.canonical_dish_id,
                 canonical_name=dish.canonical_name,
+                pizza_serving=dish.pizza_serving,
                 restaurant_count=dish.restaurant_count,
                 min_price=dish.min_price,
                 max_price=dish.max_price,
@@ -345,6 +359,11 @@ def list_menu_items(
         None,
         pattern=r"^(dine_in|takeout)$",
         description="'dine_in' or 'takeout' -- excludes only restaurants Google has explicitly confirmed do NOT offer that mode; restaurants with no data yet (null) are kept, not excluded.",
+    ),
+    pizza_serving: str | None = Query(
+        None,
+        pattern=r"^(slice|whole|unknown)$",
+        description="Pizza pricing unit. Keeps slices and whole pies in separate result sets.",
     ),
     at_day: int | None = Query(None, ge=0, le=6, description="Preview day, 0=Mon..6=Sun, instead of today. Pairs with at_time."),
     at_time: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Preview time 'HH:MM' (24h, America/New_York), instead of right now. Pairs with at_day."),
@@ -436,6 +455,9 @@ def list_menu_items(
             flag = "takeout" if service_mode == "takeout" else "dine_in"
             if getattr(item, flag) is False:
                 return False
+        requested_pizza_serving = pizza_serving or parsed.pizza_serving
+        if requested_pizza_serving is not None and item.pizza_serving != requested_pizza_serving:
+            return False
         return True
 
     if intent_ranked:
@@ -474,6 +496,7 @@ def list_menu_items(
         items=paged_items,
         places=places,
         parsed_tokens=parsed.tokens,
+        parsed_pizza_serving=parsed.pizza_serving,
         resolved_category=resolved_category,
         resolved_dish=resolved_dish,
     )

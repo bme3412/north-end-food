@@ -66,6 +66,15 @@ export function ItemCard({
         {item.canonical_category ? (
           <span className="text-muted capitalize">{prettyCategory(item.canonical_category)}</span>
         ) : null}
+        {item.pizza_serving ? (
+          <span className="rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary">
+            {item.pizza_serving === "slice"
+              ? "Slice"
+              : item.pizza_serving === "whole"
+                ? "Whole pizza"
+                : "Pizza size unclear"}
+          </span>
+        ) : null}
         {item.open_now != null ? (
           <span
             className={`rounded-full px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide ${

@@ -7,6 +7,7 @@ from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.servings import classify_pizza_serving
 
 
 def dish_match_clause(term: str) -> ColumnElement[bool]:
@@ -106,34 +107,55 @@ class DishCategoryMedians:
     items without a dish match.
     """
 
-    by_dish: dict[str, Decimal]
-    by_category: dict[str, Decimal]
+    by_dish: dict[tuple[str, str | None], Decimal]
+    by_category: dict[tuple[str, str | None], Decimal]
 
-    def median_for(self, *, canonical_dish: str | None, canonical_category: str | None) -> Decimal | None:
-        if canonical_dish and canonical_dish in self.by_dish:
-            return self.by_dish[canonical_dish]
+    def median_for(
+        self,
+        *,
+        canonical_dish: str | None,
+        canonical_category: str | None,
+        pizza_serving: str | None,
+    ) -> Decimal | None:
+        if canonical_dish and (canonical_dish, pizza_serving) in self.by_dish:
+            return self.by_dish[canonical_dish, pizza_serving]
         if canonical_category:
-            return self.by_category.get(canonical_category)
+            return self.by_category.get((canonical_category, pizza_serving))
         return None
 
 
 def dish_and_category_medians(db: Session) -> DishCategoryMedians:
     latest = latest_snapshot_ids(db).subquery()
     rows = db.execute(
-        select(MenuItem.canonical_dish, MenuItem.canonical_category, MenuItem.price).where(
+        select(
+            MenuItem.canonical_dish,
+            MenuItem.canonical_category,
+            MenuItem.price,
+            MenuItem.raw_name,
+            MenuItem.menu_section,
+            MenuItem.portion,
+            MenuItem.size,
+        ).where(
             MenuItem.menu_snapshot_id.in_(select(latest)),
             MenuItem.price.is_not(None),
             MenuItem.market_price.is_(False),
         )
     ).all()
 
-    by_dish_prices: dict[str, list[Decimal]] = {}
-    by_category_prices: dict[str, list[Decimal]] = {}
-    for dish, category, price in rows:
+    by_dish_prices: dict[tuple[str, str | None], list[Decimal]] = {}
+    by_category_prices: dict[tuple[str, str | None], list[Decimal]] = {}
+    for dish, category, price, raw_name, menu_section, portion, size in rows:
+        pizza_serving = classify_pizza_serving(
+            canonical_category=category,
+            raw_name=raw_name,
+            menu_section=menu_section,
+            portion=portion,
+            size=size,
+        )
         if dish:
-            by_dish_prices.setdefault(dish, []).append(price)
+            by_dish_prices.setdefault((dish, pizza_serving), []).append(price)
         if category:
-            by_category_prices.setdefault(category, []).append(price)
+            by_category_prices.setdefault((category, pizza_serving), []).append(price)
 
     return DishCategoryMedians(
         by_dish={key: _median(prices) for key, prices in by_dish_prices.items()},
@@ -203,6 +225,7 @@ def sibling_dishes(db: Session, canonical_dish: str, *, limit: int = 8) -> list[
 class CategoryDish:
     canonical_dish_id: str
     canonical_name: str
+    pizza_serving: str | None
     restaurant_count: int
     min_price: Decimal | None
     max_price: Decimal | None
@@ -240,6 +263,10 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
             MenuItem.price,
             MenuItem.market_price,
             CanonicalDish.canonical_name,
+            MenuItem.raw_name,
+            MenuItem.menu_section,
+            MenuItem.portion,
+            MenuItem.size,
         )
         .outerjoin(CanonicalDish, MenuItem.canonical_dish == CanonicalDish.canonical_dish_id)
         .where(
@@ -252,14 +279,22 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
 
     all_restaurants: set[str] = set()
     uncategorized_count = 0
-    by_dish: dict[str, dict] = {}
-    for dish_id, restaurant_id, price, market_price, canonical_name in rows:
+    by_dish: dict[tuple[str, str | None], dict] = {}
+    for dish_id, restaurant_id, price, market_price, canonical_name, raw_name, menu_section, portion, size in rows:
         all_restaurants.add(restaurant_id)
         if not dish_id:
             uncategorized_count += 1
             continue
+        pizza_serving = classify_pizza_serving(
+            canonical_category=category,
+            raw_name=raw_name,
+            menu_section=menu_section,
+            portion=portion,
+            size=size,
+        )
         entry = by_dish.setdefault(
-            dish_id, {"canonical_name": canonical_name, "restaurant_ids": set(), "prices": []}
+            (dish_id, pizza_serving),
+            {"canonical_name": canonical_name, "restaurant_ids": set(), "prices": []},
         )
         entry["restaurant_ids"].add(restaurant_id)
         if price is not None and not market_price:
@@ -269,12 +304,13 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
         CategoryDish(
             canonical_dish_id=dish_id,
             canonical_name=entry["canonical_name"],
+            pizza_serving=pizza_serving,
             restaurant_count=len(entry["restaurant_ids"]),
             min_price=min(entry["prices"]) if entry["prices"] else None,
             max_price=max(entry["prices"]) if entry["prices"] else None,
             median_price=_median(entry["prices"]),
         )
-        for dish_id, entry in by_dish.items()
+        for (dish_id, pizza_serving), entry in by_dish.items()
     ]
     dishes.sort(key=lambda dish: (-dish.restaurant_count, dish.canonical_name))
 

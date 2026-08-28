@@ -117,6 +117,7 @@ class MenuItemOut(BaseModel):
     dietary_tags: list[str] | None
     portion: str | None
     size: str | None
+    pizza_serving: str | None = None
     seasonal: bool
     market_price: bool
     available: bool
@@ -175,6 +176,7 @@ class MenuItemList(BaseModel):
     items: list[MenuItemOut]
     places: list[PlaceMatch] = Field(default_factory=list)
     parsed_tokens: list[str] = Field(default_factory=list)
+    parsed_pizza_serving: str | None = None
     # At most one is set. resolved_category means the query named a whole
     # food category ("pasta") -- the frontend should show the
     # category-browse page (GET /menu-items/category-summary) instead of
@@ -199,6 +201,7 @@ class SimilarDishesOut(BaseModel):
 class CategoryDishOut(BaseModel):
     canonical_dish: str
     canonical_name: str
+    pizza_serving: str | None = None
     restaurant_count: int
     min_price: Decimal | None
     max_price: Decimal | None

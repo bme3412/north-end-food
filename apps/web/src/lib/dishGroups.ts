@@ -11,6 +11,13 @@ export type DishGroup = {
   avgPrice: number | null;
 };
 
+export function pizzaServingLabel(serving: MenuItem["pizza_serving"]): string | null {
+  if (serving === "slice") return "Slice";
+  if (serving === "whole") return "Whole pizza";
+  if (serving === "unknown") return "Serving size unclear";
+  return null;
+}
+
 export function oneItemPerRestaurant(items: MenuItem[]): MenuItem[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -29,7 +36,8 @@ export function oneItemPerRestaurant(items: MenuItem[]): MenuItem[] {
 export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
   const byKey = new Map<string, MenuItem[]>();
   for (const item of items) {
-    const key = item.canonical_dish ?? `__item_${item.menu_item_id}`;
+    const servingKey = item.canonical_category === "pizza" ? `::${item.pizza_serving ?? "unknown"}` : "";
+    const key = item.canonical_dish ? `${item.canonical_dish}${servingKey}` : `__item_${item.menu_item_id}`;
     const list = byKey.get(key);
     if (list) {
       list.push(item);
@@ -45,9 +53,12 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
       (price): price is number => price != null,
     );
     const first = ranked[0];
+    const servingLabel = pizzaServingLabel(first.pizza_serving);
     groups.push({
       key,
-      displayName: first.canonical_dish ? prettyDish(first.canonical_dish) : first.raw_name,
+      displayName: first.canonical_dish
+        ? `${prettyDish(first.canonical_dish)}${servingLabel ? ` — ${servingLabel}` : ""}`
+        : first.raw_name,
       items: ranked,
       restaurantCount: new Set(ranked.map((item) => item.restaurant_id)).size,
       minPrice: prices.length ? Math.min(...prices) : null,
