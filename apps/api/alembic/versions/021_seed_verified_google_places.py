@@ -86,14 +86,15 @@ def upgrade() -> None:
             verification_status,
             verified_by,
             verified_at
-        ) VALUES (
-            :restaurant_id,
+        ) SELECT
+            restaurants.restaurant_id,
             'google_places',
             :place_id,
             'verified',
             'Brendan',
             CURRENT_TIMESTAMP
-        )
+        FROM restaurants
+        WHERE restaurant_id = :restaurant_id
         ON CONFLICT (provider, external_id) DO UPDATE SET
             restaurant_id = EXCLUDED.restaurant_id,
             verification_status = EXCLUDED.verification_status,
