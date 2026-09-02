@@ -5,13 +5,13 @@ from app.models import RestaurantExternalId
 from app.routers import restaurants as restaurants_router
 
 
-def test_list_restaurants_returns_forty_five_active(client):
+def test_list_restaurants_returns_forty_four_active(client):
     response = client.get("/restaurants")
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 45
+    assert len(body) == 44
     ids = {row["restaurant_id"] for row in body}
-    assert ids == {f"NE_{i:04d}" for i in range(1, 46)}
+    assert ids == {f"NE_{i:04d}" for i in range(1, 46)} - {"NE_0012"}
     owned_photo_ids = {"NE_0001", "NE_0003"}
     assert all(row["photo_url"] for row in body if row["restaurant_id"] in owned_photo_ids)
 
@@ -33,6 +33,11 @@ def test_list_restaurants_carries_hours_summary(client):
 
 def test_get_restaurant_not_found(client):
     response = client.get("/restaurants/NE_9999")
+    assert response.status_code == 404
+
+
+def test_removed_restaurant_is_not_public(client):
+    response = client.get("/restaurants/NE_0012")
     assert response.status_code == 404
 
 

@@ -1,6 +1,6 @@
 # North End Food Graph
 
-Structured menu intelligence for Boston's North End. The current corpus covers 45 restaurants with a search API and food-discovery frontend.
+Structured menu intelligence for Boston's North End. The current corpus covers 44 restaurants with a search API and food-discovery frontend.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ Integration tests use PostgreSQL. Local runs may skip them when PostgreSQL is in
 
 ## Scope and local photos
 
-The seed contains 45 restaurants. `restaurants.photo_url` means an owned, committed local asset only. Giacomo's and Pizzeria Regina currently have local photos. Add future owned photos under `apps/web/public/restaurant-photos/`; a valid local URL always wins and prevents a Google request.
+The seed contains 44 restaurants. `restaurants.photo_url` means an owned, committed local asset only. Giacomo's and Pizzeria Regina currently have local photos. Add future owned photos under `apps/web/public/restaurant-photos/`; a valid local URL always wins and prevents a Google request.
 
 ## Google Place verification
 

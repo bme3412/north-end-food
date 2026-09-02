@@ -24,7 +24,7 @@ services:
       - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: GOOGLE_PLACE_PHOTOS_ENABLED
-        value: false
+        value: true
       - key: GOOGLE_PLACE_PHOTO_MONTHLY_CAP
         value: 900
       - key: SERPAPI_KEY

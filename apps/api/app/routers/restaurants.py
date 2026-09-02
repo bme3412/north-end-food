@@ -134,7 +134,7 @@ def get_restaurant(
     restaurant = db.scalar(
         select(Restaurant)
         .options(selectinload(Restaurant.external_ids), selectinload(Restaurant.place_stats), selectinload(Restaurant.busyness_stats))
-        .where(Restaurant.restaurant_id == restaurant_id)
+        .where(Restaurant.restaurant_id == restaurant_id, Restaurant.active.is_(True))
     )
     if restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
