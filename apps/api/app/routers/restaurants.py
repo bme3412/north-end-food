@@ -87,8 +87,6 @@ def get_google_photo(
     db: Session = Depends(get_db),
 ) -> GooglePhotoOut:
     response.headers.update(NO_STORE_HEADERS)
-    if not places.photos_are_configured():
-        raise HTTPException(503, "Google photo fallback is unavailable", headers=NO_STORE_HEADERS)
     restaurant = db.get(Restaurant, restaurant_id)
     if restaurant is None or not restaurant.active:
         raise HTTPException(404, "Restaurant not found", headers=NO_STORE_HEADERS)
@@ -104,6 +102,8 @@ def get_google_photo(
     )
     if external_id is None:
         raise HTTPException(404, "No verified Google Place", headers=NO_STORE_HEADERS)
+    if not places.photos_are_configured():
+        raise HTTPException(503, "Google photo fallback is unavailable", headers=NO_STORE_HEADERS)
     if not reserve_monthly_attempt(db, provider="google_places", metric="photo_media", cap=settings.google_place_photo_monthly_cap):
         raise HTTPException(429, "Monthly Google photo limit reached", headers=NO_STORE_HEADERS)
     width, height = PHOTO_VARIANTS[variant]

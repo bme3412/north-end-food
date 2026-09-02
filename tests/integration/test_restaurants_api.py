@@ -127,6 +127,7 @@ def test_google_photo_monthly_cap(client, db_session, monkeypatch):
     assert client.get("/restaurants/NE_0002/google-photo").status_code == 429
 
 
-def test_google_photo_disabled(client, monkeypatch):
+def test_google_photo_disabled(client, db_session, monkeypatch):
+    _verified_google_id(db_session)
     monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: False)
     assert client.get("/restaurants/NE_0002/google-photo").status_code == 503
