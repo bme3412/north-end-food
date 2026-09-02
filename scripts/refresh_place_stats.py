@@ -49,7 +49,7 @@ def main() -> None:
         rows = db.execute(
             select(Restaurant, RestaurantExternalId)
             .join(RestaurantExternalId, RestaurantExternalId.restaurant_id == Restaurant.restaurant_id)
-            .where(RestaurantExternalId.provider == "google_places")
+            .where(RestaurantExternalId.provider == "google_places", RestaurantExternalId.verification_status == "verified", RestaurantExternalId.verified_at.is_not(None))
         ).all()
 
         if not rows:
@@ -85,8 +85,10 @@ def main() -> None:
             stats.maps_uri = details.maps_uri
             stats.place_summary = details.place_summary
             stats.place_summary_disclosure = details.place_summary_disclosure
+            stats.place_summary_flag_uri = details.place_summary_flag_uri
             stats.review_summary = details.review_summary
             stats.review_summary_disclosure = details.review_summary_disclosure
+            stats.review_summary_flag_uri = details.review_summary_flag_uri
             stats.reviews_uri = details.reviews_uri
             stats.takeout = details.takeout
             stats.dine_in = details.dine_in

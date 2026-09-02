@@ -41,8 +41,10 @@ export function ItemSheet({
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-linen-2" />
         <div className="flex items-start gap-3">
           <RestaurantPhoto
-            src={item.photo_url}
+            restaurantId={item.restaurant_id}
+            localSrc={item.photo_url}
             alt={item.restaurant_name}
+            variant="thumbnail"
             className="size-16 shrink-0 rounded-lg object-cover"
           />
           <div className="min-w-0 flex-1">

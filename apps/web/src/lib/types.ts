@@ -54,8 +54,10 @@ export type RestaurantDetail = RestaurantSummary & {
 
   place_summary: string | null;
   place_summary_disclosure: string | null;
+  place_summary_flag_uri: string | null;
   review_summary: string | null;
   review_summary_disclosure: string | null;
+  review_summary_flag_uri: string | null;
   reviews_uri: string | null;
 
   busyness_percent: number | null;
@@ -171,6 +173,17 @@ export type DishSuggestion = {
 export type SearchSuggestions = {
   restaurants: RestaurantSuggestion[];
   dishes: DishSuggestion[];
+};
+
+export type GooglePhotoAuthor = { display_name: string | null; profile_uri: string | null; avatar_uri: string | null };
+export type GooglePhoto = {
+  source: "google_maps";
+  image_url: string;
+  width_px: number | null;
+  height_px: number | null;
+  google_maps_uri: string;
+  flag_content_uri: string | null;
+  authors: GooglePhotoAuthor[];
 };
 
 export type SimilarDish = {

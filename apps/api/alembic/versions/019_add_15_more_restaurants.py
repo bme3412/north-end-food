@@ -18,11 +18,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     from app.seed import add_restaurants
+    from app.seed_data import CANONICAL_DISHES
     from app.seed_wave2 import WAVE2_RESTAURANTS
+    from app.models import CanonicalDish
 
     bind = op.get_bind()
     db = Session(bind=bind)
     try:
+        # Existing databases may predate canonical dishes referenced by the
+        # wave-two menu items. Keep this data migration self-contained, as
+        # migration 015 does for the first expansion wave.
+        for dish in CANONICAL_DISHES:
+            db.merge(CanonicalDish(**dish))
+        db.flush()
+
         stats = add_restaurants(db, WAVE2_RESTAURANTS, skip_existing=True)
         print(f"migration 019: added {stats['restaurants']} restaurants, {stats['items']} items")
     finally:

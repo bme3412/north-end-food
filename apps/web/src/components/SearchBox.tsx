@@ -39,22 +39,19 @@ export function SearchBox({
   const [suggestions, setSuggestions] = useState<SearchSuggestions>(EMPTY);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  const queryEligible = value.trim().length >= 2;
+  const visibleSuggestions = queryEligible ? suggestions : EMPTY;
 
   const items = useMemo<FlatItem[]>(() => {
     return [
-      ...suggestions.restaurants.map((restaurant) => ({ kind: "restaurant" as const, restaurant })),
-      ...suggestions.dishes.map((dish) => ({ kind: "dish" as const, dish })),
+      ...visibleSuggestions.restaurants.map((restaurant) => ({ kind: "restaurant" as const, restaurant })),
+      ...visibleSuggestions.dishes.map((dish) => ({ kind: "dish" as const, dish })),
     ];
-  }, [suggestions]);
+  }, [visibleSuggestions]);
 
   useEffect(() => {
     const query = value.trim();
-    if (query.length < 2) {
-      setSuggestions(EMPTY);
-      setOpen(false);
-      setHighlight(-1);
-      return;
-    }
+    if (query.length < 2) return;
     const controller = new AbortController();
     const handle = window.setTimeout(() => {
       suggestSearch(query, controller.signal)
@@ -125,7 +122,7 @@ export function SearchBox({
   }
 
   const activeId = highlight >= 0 ? `${listId}-option-${highlight}` : undefined;
-  const showList = open && items.length > 0;
+  const showList = queryEligible && open && items.length > 0;
 
   return (
     <div ref={rootRef} className={variant === "panel" ? "relative block min-w-0 flex-1 basis-64" : "min-w-0 flex-1"}>
@@ -136,7 +133,11 @@ export function SearchBox({
       ) : null}
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          if (nextValue.trim().length < 2) { setSuggestions(EMPTY); setOpen(false); setHighlight(-1); }
+          onChange(nextValue);
+        }}
         onFocus={() => {
           if (items.length) setOpen(true);
         }}
@@ -181,12 +182,12 @@ export function SearchBox({
               : "absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-line bg-card py-1 shadow-[0_12px_32px_rgba(23,27,32,0.12)]"
           }
         >
-          {suggestions.restaurants.length ? (
+          {visibleSuggestions.restaurants.length ? (
             <li className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wide text-muted" role="presentation">
               Restaurants
             </li>
           ) : null}
-          {suggestions.restaurants.map((restaurant, index) => {
+          {visibleSuggestions.restaurants.map((restaurant, index) => {
             const flatIndex = index;
             return (
               <SuggestionRow
@@ -196,8 +197,11 @@ export function SearchBox({
                 onSelect={() => selectItem({ kind: "restaurant", restaurant })}
               >
                 <RestaurantPhoto
-                  src={restaurant.photo_url}
+                  restaurantId={restaurant.restaurant_id}
+                  localSrc={restaurant.photo_url}
                   alt=""
+                  variant="thumbnail"
+                  showSourceLink={false}
                   className="size-8 shrink-0 rounded-lg object-cover"
                 />
                 <span className="min-w-0 flex-1">
@@ -212,13 +216,13 @@ export function SearchBox({
               </SuggestionRow>
             );
           })}
-          {suggestions.dishes.length ? (
+          {visibleSuggestions.dishes.length ? (
             <li className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wide text-muted" role="presentation">
               Dishes
             </li>
           ) : null}
-          {suggestions.dishes.map((dish, index) => {
-            const flatIndex = suggestions.restaurants.length + index;
+          {visibleSuggestions.dishes.map((dish, index) => {
+            const flatIndex = visibleSuggestions.restaurants.length + index;
             return (
               <SuggestionRow
                 key={dish.canonical_dish}

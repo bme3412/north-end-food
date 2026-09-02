@@ -20,8 +20,11 @@ export default async function RestaurantsPage() {
               className="flex items-center gap-3 rounded-xl border border-line bg-card p-3 shadow-[0_1px_4px_rgba(23,27,32,0.05)] transition-colors hover:border-primary/30 hover:bg-primary-soft/20"
             >
               <RestaurantPhoto
-                src={restaurant.photo_url}
+                restaurantId={restaurant.restaurant_id}
+                localSrc={restaurant.photo_url}
                 alt={restaurant.name}
+                variant="thumbnail"
+                showSourceLink={false}
                 className="h-14 w-14 shrink-0 rounded-lg object-cover"
               />
               <div className="min-w-0">

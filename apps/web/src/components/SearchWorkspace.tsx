@@ -52,7 +52,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [groupByDish, setGroupByDish] = useState(true);
-  const [compareGroupKey, setCompareGroupKey] = useState<string | null>(null);
+  const [comparison, setComparison] = useState<{ context: string; groupKey: string } | null>(null);
   const [mobileTab, setMobileTab] = useState<"map" | "list">(initialMobileTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,10 +113,6 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
     };
   }, [filters, asOf, openNowEnabled, serviceMode]);
 
-  useEffect(() => {
-    setCompareGroupKey(null);
-  }, [filters.q, filters.pizzaServing, filters.restaurantId]);
-
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
     setFilters((current) =>
@@ -132,6 +128,8 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const filterCount = activeFilterCount(filters);
   const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
+  const compareContext = `${filters.q}|${filters.pizzaServing}|${filters.restaurantId}`;
+  const compareGroupKey = comparison?.context === compareContext ? comparison.groupKey : null;
 
   const searchView = useMemo(
     () =>
@@ -159,9 +157,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
     ],
   );
 
-  useEffect(() => {
-    if (searchView.kind === "restaurant") setGroupByDish(false);
-  }, [searchView.kind]);
+  const showDishGroups = searchView.kind === "restaurant" ? false : groupByDish;
 
   const categoryFocus = searchView.kind === "category" ? searchView.category : null;
   const focusGroup =
@@ -244,7 +240,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           <DishFocusPage
             group={focusGroup}
             onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
-            onBack={compareGroupKey ? () => setCompareGroupKey(null) : undefined}
+            onBack={compareGroupKey ? () => setComparison(null) : undefined}
           />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
@@ -283,10 +279,10 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
         <div className="flex flex-col gap-3 border-t border-b border-line px-5 py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
-              <ViewModeButton active={groupByDish} onClick={() => setGroupByDish(true)} label="Dishes" />
-              <ViewModeButton active={!groupByDish} onClick={() => setGroupByDish(false)} label="Restaurants" />
+              <ViewModeButton active={showDishGroups} onClick={() => setGroupByDish(true)} label="Dishes" />
+              <ViewModeButton active={!showDishGroups} onClick={() => setGroupByDish(false)} label="Restaurants" />
             </div>
-            {!groupByDish ? (
+            {!showDishGroups ? (
               <label className="flex items-center gap-1.5 text-xs text-muted">
                 Sort
                 <select
@@ -307,7 +303,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
             <span className="text-muted">
               {loading
                 ? "Searching menus…"
-                : groupByDish
+                : showDishGroups
                   ? `${visibleItems.length} dish${visibleItems.length === 1 ? "" : "es"} · ${places.length} place${places.length === 1 ? "" : "s"}`
                   : `${places.length} place${places.length === 1 ? "" : "s"}`}
             </span>
@@ -338,9 +334,9 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           ) : (
             <div className="flex flex-col gap-4">
               <SectionHeader
-                icon={groupByDish ? <Utensils className="size-4" /> : <Store className="size-4" />}
+                icon={showDishGroups ? <Utensils className="size-4" /> : <Store className="size-4" />}
                 label={
-                  groupByDish
+                  showDishGroups
                     ? hasActiveSearch
                       ? "Matched Dishes"
                       : "All Dishes"
@@ -349,7 +345,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
                       : "All Restaurants"
                 }
               />
-              {groupByDish ? (
+              {showDishGroups ? (
                 <>
                   {grouped.map((group) =>
                     group.restaurantCount >= 2 ? (
@@ -357,7 +353,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
                         key={group.key}
                         group={group}
                         onOpen={setSelectedItem}
-                        onCompare={() => setCompareGroupKey(group.key)}
+                        onCompare={() => setComparison({ context: compareContext, groupKey: group.key })}
                       />
                     ) : (
                       <ItemCard

@@ -13,6 +13,10 @@ export default function ProfilePage() {
           Saved places stay on this device. Accounts and cross-device syncing can be added later.
         </p>
       </div>
+      <nav aria-label="Legal" className="mt-6 flex justify-center gap-5 text-sm text-muted">
+        <Link href="/privacy" className="underline underline-offset-2">Privacy</Link>
+        <Link href="/terms" className="underline underline-offset-2">Terms</Link>
+      </nav>
       <div className="mt-5 grid gap-3">
         <Link href="/saved" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-card px-4 shadow-sm">
           <Bookmark className="size-5 text-primary" aria-hidden="true" />

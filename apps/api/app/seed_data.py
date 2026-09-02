@@ -461,7 +461,7 @@ RESTAURANTS: list[dict[str, Any]] = [
         "secondary_cuisines": None,
         "official_website": "https://neptuneoyster.com/",
         "official_menu_url": "https://www.neptuneoyster.com/menu",
-        "photo_url": "/restaurant-photos/neptune-oyster.jpg",
+        "photo_url": None,
         "hours": [
             {"days": [6, 0, 1, 2, 3], "open": "11:00", "close": "22:00"},
             {"days": [4, 5], "open": "11:00", "close": "23:00"},
@@ -583,7 +583,7 @@ RESTAURANTS: list[dict[str, Any]] = [
         "secondary_cuisines": "dessert,cafe",
         "official_website": "https://modernpastry.com/",
         "official_menu_url": "https://modernpastry.com/pages/pastry-list",
-        "photo_url": "/restaurant-photos/modern-pastry.jpg",
+        "photo_url": None,
         "hours": [
             {"days": [6, 0, 1, 2, 3], "open": "07:00", "close": "23:00"},
             {"days": [4, 5], "open": "07:00", "close": "23:59"},
@@ -698,7 +698,7 @@ RESTAURANTS: list[dict[str, Any]] = [
         "secondary_cuisines": "seafood,steak",
         "official_website": "https://bricco.com/",
         "official_menu_url": "https://bricco.com/menu/",
-        "photo_url": "/restaurant-photos/bricco.jpg",
+        "photo_url": None,
         "hours": [
             {"days": [0, 1, 2, 3, 6], "open": "16:00", "close": "23:00"},
             {"days": [4], "open": "16:00", "close": "02:00"},

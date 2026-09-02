@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,14 +41,30 @@ class RestaurantPlaceStats(Base):
     # hardcoding "Summarized with Gemini" ourselves.
     place_summary: Mapped[str | None] = mapped_column(Text)
     place_summary_disclosure: Mapped[str | None] = mapped_column(Text)
+    place_summary_flag_uri: Mapped[str | None] = mapped_column(String(1024))
     review_summary: Mapped[str | None] = mapped_column(Text)
     review_summary_disclosure: Mapped[str | None] = mapped_column(Text)
+    review_summary_flag_uri: Mapped[str | None] = mapped_column(String(1024))
     reviews_uri: Mapped[str | None] = mapped_column(String(1024))
 
     source: Mapped[str] = mapped_column(String(32), default="google_places", nullable=False)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     restaurant: Mapped[Restaurant] = relationship("Restaurant", back_populates="place_stats")
+
+
+class ExternalApiUsage(Base):
+    """Persistent, atomic monthly guard for metered external API calls."""
+
+    __tablename__ = "external_api_usage"
+
+    provider: Mapped[str] = mapped_column(String(64), primary_key=True)
+    metric: Mapped[str] = mapped_column(String(64), primary_key=True)
+    period_start: Mapped[date] = mapped_column(Date, primary_key=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class RestaurantBusynessStats(Base):

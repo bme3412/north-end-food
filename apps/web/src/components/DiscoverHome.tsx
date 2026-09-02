@@ -149,7 +149,7 @@ export function DiscoverHome() {
               href={`/restaurants/${restaurant.restaurant_id}`}
               className="group overflow-hidden rounded-2xl border border-line bg-card shadow-sm"
             >
-              <RestaurantPhoto src={restaurant.photo_url} alt={restaurant.name} className="aspect-[16/9] w-full object-cover" />
+              <RestaurantPhoto restaurantId={restaurant.restaurant_id} localSrc={restaurant.photo_url} alt={restaurant.name} variant="card" showSourceLink={false} className="aspect-[16/9] w-full object-cover" />
               <div className="p-3">
                 <p className="truncate font-bold">{restaurant.name}</p>
                 <p className="mt-1 truncate text-xs text-muted">{restaurant.address}</p>

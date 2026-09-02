@@ -3,6 +3,7 @@ import { PersonStanding, ShoppingBag, Star, Utensils } from "lucide-react";
 
 import { Badge } from "@/components/Badge";
 import { DishVisual } from "@/components/DishVisual";
+import { GoogleMapsAttribution } from "@/components/GoogleMapsAttribution";
 import { formatPctBadge, formatPrice, formatWalkTimeEstimate } from "@/lib/format";
 import { MEDAL_TONE_CLASSES, medalTone } from "@/lib/rank";
 import type { MenuItem } from "@/lib/types";
@@ -68,6 +69,7 @@ export function RankedDishRow({
             {item.review_count != null ? ` (${item.review_count})` : ""}
           </p>
         ) : null}
+        {item.rating != null || item.dine_in != null || item.takeout != null ? <GoogleMapsAttribution /> : null}
       </div>
 
       <div className="shrink-0 text-right">

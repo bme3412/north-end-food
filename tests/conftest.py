@@ -6,6 +6,7 @@ substitute wouldn't actually exercise.
 """
 
 from __future__ import annotations
+import os
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -39,6 +40,8 @@ def engine():
                 conn.execute(text(f'CREATE DATABASE "{test_url.database}"'))
         admin_engine.dispose()
     except Exception as exc:  # noqa: BLE001
+        if os.getenv("CI", "").lower() == "true":
+            pytest.fail(f"Postgres is required in CI; integration tests cannot be skipped ({exc})")
         pytest.skip(f"Postgres not reachable for tests ({exc}); start it and rerun.")
 
     test_engine = create_engine(test_url, pool_pre_ping=True)

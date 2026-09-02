@@ -27,9 +27,9 @@ class FakeHTTPClient:
     def __exit__(self, *exc):
         return False
 
-    def get(self, url, headers=None):
+    def get(self, url, headers=None, params=None):
         if self._capture is not None:
-            self._capture.update(method="GET", url=url, headers=headers)
+            self._capture.update(method="GET", url=url, headers=headers, params=params)
         return FakeResponse(self._payload)
 
     def post(self, url, headers=None, json=None):
@@ -87,11 +87,13 @@ def test_fetch_place_details_parses_full_response(monkeypatch):
         "generativeSummary": {
             "overview": {"text": "A lively seafood spot known for lobster rolls.", "languageCode": "en-US"},
             "disclosureText": {"text": "Summarized with Gemini", "languageCode": "en-US"},
+            "flagContentUri": "https://maps.google.com/flag/place/123",
         },
         "reviewSummary": {
             "text": {"text": "Reviewers love the raw bar but note long waits.", "languageCode": "en-US"},
             "disclosureText": {"text": "Summarized with Gemini", "languageCode": "en-US"},
             "reviewsUri": "https://maps.google.com/reviews/123",
+            "flagContentUri": "https://maps.google.com/flag/reviews/123",
         },
     }
     capture = {}
@@ -110,8 +112,10 @@ def test_fetch_place_details_parses_full_response(monkeypatch):
     assert details.maps_uri == "https://maps.google.com/?cid=123"
     assert details.place_summary == "A lively seafood spot known for lobster rolls."
     assert details.place_summary_disclosure == "Summarized with Gemini"
+    assert details.place_summary_flag_uri == "https://maps.google.com/flag/place/123"
     assert details.review_summary == "Reviewers love the raw bar but note long waits."
     assert details.review_summary_disclosure == "Summarized with Gemini"
+    assert details.review_summary_flag_uri == "https://maps.google.com/flag/reviews/123"
     assert details.reviews_uri == "https://maps.google.com/reviews/123"
 
 
@@ -127,3 +131,37 @@ def test_fetch_place_details_handles_missing_optional_fields(monkeypatch):
     assert details.place_summary is None
     assert details.review_summary is None
     assert details.reviews_uri is None
+
+
+def test_fetch_place_photo_uses_first_photo_and_returns_attribution(monkeypatch):
+    monkeypatch.setattr(places.settings, "google_place_photos_enabled", True)
+    payloads = iter([{
+        "photos": [{
+            "name": "places/abc/photos/first", "widthPx": 1200, "heightPx": 800,
+            "googleMapsUri": "https://maps.google.com/photo/first",
+            "flagContentUri": "https://maps.google.com/flag/photo/first",
+            "authorAttributions": [{"displayName": "Author", "uri": "https://maps.google.com/contrib/author", "photoUri": "https://example.com/avatar.jpg"}],
+        }, {"name": "places/abc/photos/second"}]
+    }, {"photoUri": "https://lh3.googleusercontent.com/ephemeral"}])
+    calls = []
+
+    class QueueClient(FakeHTTPClient):
+        def __init__(self):
+            pass
+        def get(self, url, headers=None, params=None):
+            calls.append({"url": url, "headers": headers, "params": params})
+            return FakeResponse(next(payloads))
+
+    monkeypatch.setattr(places.httpx, "Client", lambda timeout: QueueClient())
+    photo = places.fetch_place_photo("abc", max_width_px=720, max_height_px=540)
+    assert photo.image_url == "https://lh3.googleusercontent.com/ephemeral"
+    assert photo.google_maps_uri == "https://maps.google.com/photo/first"
+    assert photo.authors[0].display_name == "Author"
+    assert calls[1]["params"]["skipHttpRedirect"] == "true"
+    assert "test-key" not in photo.image_url
+
+
+def test_fetch_place_photo_requires_feature_switch(monkeypatch):
+    monkeypatch.setattr(places.settings, "google_place_photos_enabled", False)
+    monkeypatch.setattr(places.httpx, "Client", lambda *args, **kwargs: pytest.fail("network used"))
+    assert places.fetch_place_photo("abc", max_width_px=720, max_height_px=540) is None

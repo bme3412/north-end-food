@@ -149,8 +149,3 @@ textarea {
 .sheet-open {
   overflow: hidden;
 }
-
-.mapboxgl-ctrl-logo,
-.mapboxgl-ctrl-attrib-inner {
-  opacity: 0.55;
-}

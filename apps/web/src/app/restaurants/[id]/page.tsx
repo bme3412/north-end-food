@@ -9,6 +9,8 @@ import { BusynessChart } from "@/components/BusynessChart";
 import { ProvenancePanel } from "@/components/ProvenancePanel";
 import { ReviewSummaryCard } from "@/components/ReviewSummaryCard";
 import { SaveButton } from "@/components/SaveButton";
+import { GoogleMapsAttribution } from "@/components/GoogleMapsAttribution";
+const ABOUT_SUMMARIES = "https://support.google.com/local-listings/answer/9851099";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -39,8 +41,10 @@ export default async function RestaurantPage({ params }: PageProps) {
 
       <div className="relative -mx-4 overflow-hidden sm:hidden">
         <RestaurantPhoto
-          src={restaurant.photo_url}
+          restaurantId={restaurant.restaurant_id}
+          localSrc={restaurant.photo_url}
           alt={restaurant.name}
+          variant="hero"
           className="aspect-[16/10] w-full object-cover"
         />
         <div className="absolute right-4 top-4">
@@ -59,13 +63,16 @@ export default async function RestaurantPage({ params }: PageProps) {
         {restaurant.name}
       </h1>
       <p className="mt-2 text-muted">{restaurant.address}</p>
-      {restaurant.place_summary ? (
-        <p className="mt-2 text-sm leading-relaxed text-ink">
-          {restaurant.place_summary}
-          <span className="ml-1.5 text-xs text-muted">
-            ({restaurant.place_summary_disclosure ?? "Summarized with Gemini"})
-          </span>
-        </p>
+      {restaurant.place_summary && restaurant.place_summary_disclosure && restaurant.place_summary_flag_uri ? (
+        <div className="mt-2 text-sm leading-relaxed text-ink">
+          <p>{restaurant.place_summary}</p>
+          <p className="mt-1 text-xs text-muted">{restaurant.place_summary_disclosure}</p>
+          <div className="mt-1 flex flex-wrap gap-3 text-xs">
+            <a href={ABOUT_SUMMARIES} target="_blank" rel="noreferrer" className="text-basil underline">About this summary</a>
+            <a href={restaurant.place_summary_flag_uri} target="_blank" rel="noreferrer" className="text-basil underline">Report summary</a>
+            <GoogleMapsAttribution href={restaurant.maps_uri} />
+          </div>
+        </div>
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -95,6 +102,7 @@ export default async function RestaurantPage({ params }: PageProps) {
             {restaurant.price_level != null ? (
               <span className="rounded-full bg-linen-2 px-3 py-1">{formatPriceLevel(restaurant.price_level)}</span>
             ) : null}
+            <GoogleMapsAttribution href={restaurant.maps_uri} />
             {restaurant.busyness_percent != null ? (
               <span className="rounded-full bg-linen-2 px-3 py-1">{formatBusynessPercent(restaurant.busyness_percent)}</span>
             ) : null}
@@ -150,8 +158,10 @@ export default async function RestaurantPage({ params }: PageProps) {
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="hidden sm:block lg:sticky lg:top-20 lg:self-start">
           <RestaurantPhoto
-            src={restaurant.photo_url}
+            restaurantId={restaurant.restaurant_id}
+            localSrc={restaurant.photo_url}
             alt={restaurant.name}
+            variant="hero"
             className="aspect-[3/4] w-full max-w-xs rounded-xl bg-linen-2 object-cover shadow-[0_1px_4px_rgba(23,27,32,0.06)] lg:max-w-none"
           />
           <div className="mt-3">
@@ -162,11 +172,12 @@ export default async function RestaurantPage({ params }: PageProps) {
         <div className="flex flex-col gap-8">
           {/* Google review intelligence */}
           <div>
-            <h2 className="text-base font-bold">Review intelligence</h2>
+            <h2 className="text-base font-bold">Review summary</h2>
             <div className="mt-3">
               <ReviewSummaryCard
                 summary={restaurant.review_summary}
                 disclosure={restaurant.review_summary_disclosure}
+                flagUri={restaurant.review_summary_flag_uri}
                 reviewsUri={restaurant.reviews_uri}
               />
             </div>

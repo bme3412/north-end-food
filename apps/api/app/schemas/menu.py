@@ -76,8 +76,10 @@ class RestaurantDetail(RestaurantSummary):
     # with its own disclosure text per Google's attribution requirement.
     place_summary: str | None = None
     place_summary_disclosure: str | None = None
+    place_summary_flag_uri: str | None = None
     review_summary: str | None = None
     review_summary_disclosure: str | None = None
+    review_summary_flag_uri: str | None = None
     reviews_uri: str | None = None
 
     # SerpApi (Google Popular Times) — null until SERPAPI_KEY is configured and refreshed.
@@ -208,6 +210,22 @@ class DishSuggestionOut(BaseModel):
 class SearchSuggestionsOut(BaseModel):
     restaurants: list[RestaurantSuggestionOut] = Field(default_factory=list)
     dishes: list[DishSuggestionOut] = Field(default_factory=list)
+
+
+class GooglePhotoAuthorOut(BaseModel):
+    display_name: str | None = None
+    profile_uri: str | None = None
+    avatar_uri: str | None = None
+
+
+class GooglePhotoOut(BaseModel):
+    source: str = "google_maps"
+    image_url: str
+    width_px: int | None = None
+    height_px: int | None = None
+    google_maps_uri: str
+    flag_content_uri: str | None = None
+    authors: list[GooglePhotoAuthorOut] = Field(default_factory=list)
 
 
 class SimilarDishOut(BaseModel):

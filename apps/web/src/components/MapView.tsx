@@ -15,7 +15,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { getRestaurant, listMenuItems } from "@/lib/api";
 import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
-import { formatPrice, formatPriceLevel, prettyCategory } from "@/lib/format";
+import { formatPrice, prettyCategory } from "@/lib/format";
 import { NORTH_END_CENTER } from "@/lib/geo";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import type { MenuItem, PlaceMatch, RestaurantDetail } from "@/lib/types";
@@ -102,7 +102,6 @@ export default function MapView({
       initialViewState={NORTH_END}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       style={{ width: "100%", height: "100%" }}
-      attributionControl={false}
       onClick={() => onSelect(null)}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
@@ -274,7 +273,7 @@ function PlaceDetailCard({
     <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 md:inset-x-auto md:bottom-6 md:left-6 md:w-[420px] lg:w-[460px]">
       <div className="pointer-events-auto overflow-hidden rounded-xl border border-line bg-card shadow-xl">
         <div className="relative">
-          <RestaurantPhoto src={place.photo_url} alt={place.name} className="h-44 w-full object-cover sm:h-52" />
+          <RestaurantPhoto restaurantId={place.restaurant_id} localSrc={place.photo_url} alt={place.name} variant="card" allowGoogle={false} className="h-44 w-full object-cover sm:h-52" />
           <button
             type="button"
             onClick={onClose}
@@ -316,24 +315,11 @@ function PlaceDetailCard({
 
           <p className="mt-1 text-sm text-muted">{place.address}</p>
 
-          <p className="mt-2 text-sm text-muted">
-            {detail?.rating != null ? (
-              <>
-                ★ {detail.rating}
-                {detail.review_count != null ? ` (${detail.review_count})` : ""} ·{" "}
-              </>
-            ) : null}
-            {place.primary_cuisine ? <span className="capitalize">{prettyCategory(place.primary_cuisine)}</span> : null}
-            {detail?.price_level != null ? ` · ${formatPriceLevel(detail.price_level)}` : ""}
-          </p>
+          {place.primary_cuisine ? <p className="mt-2 text-sm capitalize text-muted">{prettyCategory(place.primary_cuisine)}</p> : null}
 
           {place.hours_summary ? <p className="mt-1 text-xs text-muted">{place.hours_summary}</p> : null}
 
-          {detail?.place_summary ? (
-            <p className="mt-3 text-sm leading-relaxed text-ink">{detail.place_summary}</p>
-          ) : null}
-
-          {topCategories.length || (detail && detail.reservation_url == null) || place.takeout ? (
+          {topCategories.length || (detail && detail.reservation_url == null) ? (
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               {topCategories.map((category) => (
                 <span
@@ -344,9 +330,6 @@ function PlaceDetailCard({
                   {prettyCategory(category)}
                 </span>
               ))}
-              {place.takeout ? (
-                <span className="rounded-full bg-basil-soft px-2.5 py-1 text-basil">🥡 Takeout available</span>
-              ) : null}
               {detail && detail.reservation_url == null ? (
                 <span className="rounded-full bg-linen-2 px-2.5 py-1 text-muted">ⓘ No reservations</span>
               ) : null}

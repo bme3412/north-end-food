@@ -10,10 +10,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://northend:northend@localhost:5433/northend"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3001"
     raw_menu_dir: Path = REPO_ROOT / "data" / "raw_menus"
 
     google_maps_api_key: str | None = None
+    google_place_photos_enabled: bool = False
+    google_place_photo_monthly_cap: int = 900
     serpapi_key: str | None = None
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"

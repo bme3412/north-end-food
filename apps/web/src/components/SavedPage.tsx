@@ -70,7 +70,7 @@ export function SavedPage() {
                 href={`/restaurants/${restaurant.restaurant_id}`}
                 className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3 shadow-sm"
               >
-                <RestaurantPhoto src={restaurant.photo_url} alt={restaurant.name} className="size-16 rounded-xl object-cover" />
+                <RestaurantPhoto restaurantId={restaurant.restaurant_id} localSrc={restaurant.photo_url} alt={restaurant.name} variant="thumbnail" showSourceLink={false} className="size-16 rounded-xl object-cover" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{restaurant.name}</span>
                   <span className="mt-1 block truncate text-xs text-muted">{restaurant.address}</span>

@@ -82,6 +82,8 @@ class RestaurantExternalId(Base):
     provider: Mapped[str] = mapped_column(String(64), nullable=False)
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     external_url: Mapped[str | None] = mapped_column(String(1024))
+    verification_status: Mapped[str] = mapped_column(String(32), default="unverified", nullable=False)
+    verified_by: Mapped[str | None] = mapped_column(String(255))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     restaurant: Mapped[Restaurant] = relationship(back_populates="external_ids")

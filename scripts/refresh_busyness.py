@@ -53,7 +53,7 @@ def main() -> None:
         rows = db.execute(
             select(Restaurant, RestaurantExternalId)
             .join(RestaurantExternalId, RestaurantExternalId.restaurant_id == Restaurant.restaurant_id)
-            .where(RestaurantExternalId.provider == "google_places")
+            .where(RestaurantExternalId.provider == "google_places", RestaurantExternalId.verification_status == "verified", RestaurantExternalId.verified_at.is_not(None))
         ).all()
 
         if not rows:
