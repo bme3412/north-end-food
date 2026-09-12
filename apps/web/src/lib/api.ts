@@ -1,3 +1,4 @@
+import { collectAllMenuItemPages, MENU_ITEM_PAGE_SIZE } from "./menuItemPages";
 import type { CategorySummary, FeaturedMenu, FilterMeta, GooglePhoto, MenuItemList, RestaurantDetail, RestaurantSummary, SearchSuggestions, SimilarDishesResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
@@ -46,6 +47,18 @@ export function listMenuItems(params: Record<string, string | undefined>, signal
   }
   const qs = search.toString();
   return getJson(`/menu-items${qs ? `?${qs}` : ""}`, signal);
+}
+
+/** Pages until every matching row is loaded so compare cards and map pins see the full set. */
+export function listAllMenuItems(
+  params: Record<string, string | undefined>,
+  signal?: AbortSignal,
+): Promise<MenuItemList> {
+  const { limit: _limit, offset: _offset, ...rest } = params;
+  return collectAllMenuItemPages(
+    (offset, limit) => listMenuItems({ ...rest, limit: String(limit), offset: String(offset) }, signal),
+    MENU_ITEM_PAGE_SIZE,
+  );
 }
 
 export function listSimilarDishes(canonicalDish: string, limit = 8): Promise<SimilarDishesResponse> {

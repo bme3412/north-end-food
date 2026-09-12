@@ -14,7 +14,7 @@ import { ItemCard } from "@/components/ItemCard";
 import { ItemSheet } from "@/components/ItemSheet";
 import { RestaurantRow } from "@/components/RestaurantRow";
 import { SearchBrowse } from "@/components/SearchBrowse";
-import { getFilterMeta, listMenuItems } from "@/lib/api";
+import { getFilterMeta, listAllMenuItems } from "@/lib/api";
 import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
 import { groupItemsByDish, organizeDishGroups } from "@/lib/dishGroups";
 import {
@@ -107,12 +107,11 @@ export function SearchWorkspace() {
     const controller = new AbortController();
     const handle = window.setTimeout(() => {
       setLoading(true);
-      listMenuItems({
+      listAllMenuItems({
         ...filtersToParams(filters),
         ...asOfTimeToParams(asOf),
         ...serviceModeToParams(serviceMode),
         open_now: openNowEnabled ? "true" : undefined,
-        limit: "200",
       }, controller.signal)
         .then((data) => {
           setItems(data.items);

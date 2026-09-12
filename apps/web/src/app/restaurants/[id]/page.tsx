@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getRestaurant, listMenuItems } from "@/lib/api";
+import { getRestaurant, listAllMenuItems } from "@/lib/api";
 import { formatBusynessPercent, formatDate, formatPrice, formatPriceLevel } from "@/lib/format";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { PriceProfileCard } from "@/components/PriceProfileCard";
@@ -19,7 +19,7 @@ type PageProps = {
 export default async function RestaurantPage({ params }: PageProps) {
   const { id } = await params;
   const restaurant = await getRestaurant(id);
-  const menu = await listMenuItems({ restaurant_id: id });
+  const menu = await listAllMenuItems({ restaurant_id: id });
 
   const sections = new Map<string, typeof menu.items>();
   for (const item of menu.items) {
