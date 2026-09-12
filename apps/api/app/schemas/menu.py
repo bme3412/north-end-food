@@ -22,6 +22,11 @@ class RestaurantSummary(BaseModel):
     active: bool
     open_now: bool | None = None
     hours_summary: str | None = None
+    price_level: int | None = None
+    lowest_price: Decimal | None = None
+    busyness_percent: int | None = None
+    closes_at: str | None = None
+    closes_sort: int | None = None
 
 
 class RestaurantExternalIdOut(BaseModel):
@@ -173,9 +178,20 @@ class PlaceMatch(BaseModel):
     delivery: bool | None = None
 
 
+class FeaturedCompareDishOut(BaseModel):
+    canonical_dish: str
+    canonical_name: str
+    category: str
+    restaurant_count: int
+    min_price: Decimal | None = None
+    max_price: Decimal | None = None
+    median_price: Decimal | None = None
+
+
 class FeaturedMenuOut(BaseModel):
     classics: list[MenuItemOut] = Field(default_factory=list)
     best_value: list[MenuItemOut] = Field(default_factory=list)
+    compare: list[FeaturedCompareDishOut] = Field(default_factory=list)
 
 
 class MenuItemList(BaseModel):

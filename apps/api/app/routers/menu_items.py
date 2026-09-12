@@ -10,6 +10,7 @@ from app.hours import compute_open_status, format_hours_summary
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant, RestaurantPlaceStats
 from app.queries import (
     DishCategoryMedians,
+    _median,
     category_summary,
     dish_and_category_medians,
     dish_match_clause,
@@ -22,7 +23,14 @@ from app.queries import (
 )
 from app.ranking import balanced_secondary_score, fuzzy_token_clause, relevance_expressions
 from app.schemas import FeaturedMenuOut, MenuItemList, MenuItemOut
-from app.schemas.menu import CategoryDishOut, CategorySummaryOut, PlaceMatch, SimilarDishesOut, SimilarDishOut
+from app.schemas.menu import (
+    CategoryDishOut,
+    CategorySummaryOut,
+    FeaturedCompareDishOut,
+    PlaceMatch,
+    SimilarDishesOut,
+    SimilarDishOut,
+)
 from app.search import like_pattern, parse_query
 from app.servings import classify_pizza_serving, pizza_serving_sql_expr
 
@@ -304,10 +312,19 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
         "ingredient_categories": sorted(ingredient_categories),
         "min_price": float(min_price) if min_price is not None else None,
         "max_price": float(max_price) if max_price is not None else None,
+        "category_counts": {
+            category: count
+            for category, count in db.execute(
+                select(MenuItem.canonical_category, func.count())
+                .where(latest_items, MenuItem.canonical_category.is_not(None))
+                .group_by(MenuItem.canonical_category)
+            ).all()
+        },
     }
 
 
 CLASSIC_DISH_IDS = ("CALAMARI", "CARBONARA", "LOBSTER_RAVIOLI", "CHICKEN_PARMIGIANA", "CANNOLI")
+COMPARE_DISH_IDS = ("LOBSTER_RAVIOLI", "CHICKEN_PARMIGIANA", "CARBONARA", "CALAMARI")
 
 
 @router.get("/featured", response_model=FeaturedMenuOut)
@@ -330,11 +347,49 @@ def featured_menu(db: Session = Depends(get_db)) -> FeaturedMenuOut:
         classics.append(item)
         if len(classics) == 4:
             break
-    best_value = sorted(
-        (item for item in items if item.pct_vs_median is not None and item.pct_vs_median < 0),
-        key=lambda item: item.pct_vs_median or 0,
-    )[:4]
-    return FeaturedMenuOut(classics=classics, best_value=best_value)
+    def _is_plate(item: MenuItemOut) -> bool:
+        name = item.raw_name.lower()
+        if item.canonical_category in {"sides"}:
+            return False
+        if any(token in name for token in ("topping", "extra ", "add-on", "side of")):
+            return False
+        return bool(item.canonical_dish)
+
+    below_median = [
+        item
+        for item in items
+        if item.pct_vs_median is not None and item.pct_vs_median < 0 and _is_plate(item)
+    ]
+    open_deals = [item for item in below_median if item.open_now]
+    best_value = sorted(open_deals or below_median, key=lambda item: item.pct_vs_median or 0)[:4]
+
+    dish_names = {
+        row.canonical_dish_id: (row.canonical_name, row.category)
+        for row in db.scalars(select(CanonicalDish).where(CanonicalDish.canonical_dish_id.in_(COMPARE_DISH_IDS)))
+    }
+    grouped: dict[str, list] = defaultdict(list)
+    for item in items:
+        if item.canonical_dish in COMPARE_DISH_IDS:
+            grouped[item.canonical_dish].append(item)
+    compare: list[FeaturedCompareDishOut] = []
+    for dish_id in COMPARE_DISH_IDS:
+        group = grouped.get(dish_id, [])
+        if not group:
+            continue
+        prices = [item.price for item in group if item.price is not None]
+        name, category = dish_names.get(dish_id, (group[0].raw_name, group[0].canonical_category or ""))
+        compare.append(
+            FeaturedCompareDishOut(
+                canonical_dish=dish_id,
+                canonical_name=name,
+                category=category,
+                restaurant_count=len({item.restaurant_id for item in group}),
+                min_price=min(prices) if prices else None,
+                max_price=max(prices) if prices else None,
+                median_price=_median(prices),
+            )
+        )
+    return FeaturedMenuOut(classics=classics, best_value=best_value, compare=compare)
 
 
 @router.get("/similar-dishes", response_model=SimilarDishesOut)

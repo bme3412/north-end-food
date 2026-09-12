@@ -12,6 +12,7 @@ dist/
 build/
 data/raw_menus/*
 !data/raw_menus/.gitkeep
+menus/
 apps/web/node_modules/
 apps/web/.next/
 apps/web/out/

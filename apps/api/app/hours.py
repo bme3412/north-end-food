@@ -97,6 +97,12 @@ def is_open_during(hours: list[dict] | None, day: int, start: time, end: time) -
     return False
 
 
+def preview_datetime(at_day: int | None, at_time: str | None) -> datetime | None:
+    if at_day is None or not at_time:
+        return None
+    return _anchor_datetime(at_day, _parse_time(at_time))
+
+
 def compute_open_status(
     hours: list[dict] | None,
     at_day: int | None,
@@ -135,6 +141,51 @@ def _day_range_label(days: list[int]) -> str:
         start = prev = day
     ranges.append((start, prev))
     return "/".join(_DAY_NAMES[a] if a == b else f"{_DAY_NAMES[a]}-{_DAY_NAMES[b]}" for a, b in ranges)
+
+
+def _covers_full_day(open_t: time, close_t: time) -> bool:
+    return open_t == close_t or (open_t == time(0, 0) and close_t >= time(23, 59))
+
+
+def todays_close_label(hours: list[dict] | None, now: datetime | None = None) -> tuple[str | None, int | None]:
+    """Human close time for the period that is open right now, plus a
+    sort key (minutes from today's midnight, 24h wraps past 1440).
+    """
+    if not hours:
+        return None, None
+    now = (now or now_in_north_end()).astimezone(NORTH_END_TZ)
+    weekday = now.weekday()
+    current = now.time()
+
+    for offset in (0, 1):
+        day = (weekday - offset) % 7
+        for period in hours:
+            if day not in period["days"]:
+                continue
+            open_t = _parse_time(period["open"])
+            close_t = _parse_time(period["close"])
+            if _covers_full_day(open_t, close_t):
+                return "Open 24 hours", 24 * 60
+            overnight = close_t <= open_t
+            active = False
+            if offset == 0:
+                if overnight:
+                    active = current >= open_t
+                else:
+                    active = open_t <= current < close_t
+            elif overnight and current < close_t:
+                active = True
+            if not active:
+                continue
+            hour, minute = (int(part) for part in period["close"].split(":"))
+            period_label = "AM" if hour < 12 else "PM"
+            hour12 = hour % 12 or 12
+            clock = f"{hour12}:{minute:02d} {period_label}"
+            minutes = close_t.hour * 60 + close_t.minute
+            if overnight or offset == 1:
+                minutes += 24 * 60
+            return f"Closes {clock}", minutes
+    return None, None
 
 
 def format_hours_summary(hours: list[dict] | None) -> str | None:

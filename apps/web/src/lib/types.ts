@@ -14,6 +14,11 @@ export type RestaurantSummary = {
   active: boolean;
   open_now: boolean | null;
   hours_summary: string | null;
+  price_level: number | null;
+  lowest_price: string | null;
+  busyness_percent: number | null;
+  closes_at: string | null;
+  closes_sort: number | null;
 };
 
 export type CategoryMedian = {
@@ -215,9 +220,20 @@ export type CategorySummary = {
   uncategorized_count: number;
 };
 
+export type FeaturedCompareDish = {
+  canonical_dish: string;
+  canonical_name: string;
+  category: string;
+  restaurant_count: number;
+  min_price: string | null;
+  max_price: string | null;
+  median_price: string | null;
+};
+
 export type FeaturedMenu = {
   classics: MenuItem[];
   best_value: MenuItem[];
+  compare?: FeaturedCompareDish[];
 };
 
 export type FilterMeta = {
@@ -229,4 +245,5 @@ export type FilterMeta = {
   ingredient_categories: string[];
   min_price: number | null;
   max_price: number | null;
+  category_counts?: Record<string, number>;
 };

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
-from app.hours import compute_open_status, format_hours_summary
+from app.hours import compute_open_status, format_hours_summary, preview_datetime, todays_close_label
 from app.integrations import places
 from app.integrations.photo_cache import get_cached_photo, set_cached_photo
 from app.integrations.rate_limit import allow_photo_request
@@ -48,7 +48,11 @@ def _to_summary(
     at_day: int | None = None,
     at_time: str | None = None,
     at_until: str | None = None,
+    lowest_price=None,
 ) -> RestaurantSummary:
+    closes_at, closes_sort = todays_close_label(restaurant.hours, now=preview_datetime(at_day, at_time))
+    place = restaurant.place_stats
+    busy = restaurant.busyness_stats
     return RestaurantSummary(
         restaurant_id=restaurant.restaurant_id,
         name=restaurant.name,
@@ -65,6 +69,11 @@ def _to_summary(
         active=restaurant.active,
         open_now=compute_open_status(restaurant.hours, at_day, at_time, at_until),
         hours_summary=format_hours_summary(restaurant.hours),
+        price_level=place.price_level if place else None,
+        lowest_price=lowest_price,
+        busyness_percent=busy.busyness_percent if busy else None,
+        closes_at=closes_at,
+        closes_sort=closes_sort,
     )
 
 
@@ -94,14 +103,37 @@ def list_restaurants(
     at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window."),
     db: Session = Depends(get_db),
 ) -> list[RestaurantSummary]:
-    stmt = select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)
+    stmt = (
+        select(Restaurant)
+        .where(Restaurant.active.is_(True))
+        .options(selectinload(Restaurant.place_stats), selectinload(Restaurant.busyness_stats))
+        .order_by(Restaurant.name)
+    )
     if open_now is not None:
         matching_ids = restaurant_ids_matching_open_status(
             db, open_now=open_now, at_day=at_day, at_time=at_time, at_until=at_until
         )
         stmt = stmt.where(Restaurant.restaurant_id.in_(matching_ids or [""]))
     restaurants = list(db.scalars(stmt))
-    return [_to_summary(restaurant, at_day=at_day, at_time=at_time, at_until=at_until) for restaurant in restaurants]
+    latest = latest_snapshot_ids(db).subquery()
+    min_prices = dict(
+        db.execute(
+            select(MenuItem.restaurant_id, func.min(MenuItem.price)).where(
+                MenuItem.menu_snapshot_id.in_(select(latest)),
+                MenuItem.price.is_not(None),
+            ).group_by(MenuItem.restaurant_id)
+        ).all()
+    )
+    return [
+        _to_summary(
+            restaurant,
+            at_day=at_day,
+            at_time=at_time,
+            at_until=at_until,
+            lowest_price=min_prices.get(restaurant.restaurant_id),
+        )
+        for restaurant in restaurants
+    ]
 
 
 @router.get("/{restaurant_id}/google-photo", response_model=GooglePhotoOut)

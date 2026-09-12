@@ -85,6 +85,13 @@ def test_featured_menu_returns_classics_and_best_value(client):
     assert all(item["pct_vs_median"] is not None and item["pct_vs_median"] < 0 for item in body["best_value"])
     pcts = [item["pct_vs_median"] for item in body["best_value"]]
     assert pcts == sorted(pcts)
+    assert [row["canonical_dish"] for row in body["compare"]] == [
+        "LOBSTER_RAVIOLI",
+        "CHICKEN_PARMIGIANA",
+        "CARBONARA",
+        "CALAMARI",
+    ]
+    assert all(row["restaurant_count"] >= 1 for row in body["compare"])
 
 
 def test_meta_reflects_seeded_data(client):

@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from app.hours import compute_open_status, format_hours_summary, is_open_during, is_open_now
+from app.hours import compute_open_status, format_hours_summary, is_open_during, is_open_now, todays_close_label
 
 TZ = ZoneInfo("America/New_York")
 
@@ -107,3 +107,22 @@ def test_compute_open_status_previews_a_specific_day_and_time():
 def test_compute_open_status_previews_a_range():
     assert compute_open_status(BRICCO_HOURS, 0, "17:00", "21:00") is True
     assert compute_open_status(BRICCO_HOURS, 0, "15:00", "21:00") is False
+
+
+def test_todays_close_label_same_day():
+    label, sort = todays_close_label(BRICCO_HOURS, _at(2026, 8, 31, 17))
+    assert label == "Closes 11:00 PM"
+    assert sort == 23 * 60
+
+
+def test_todays_close_label_overnight():
+    label, sort = todays_close_label(BRICCO_HOURS, _at(2026, 8, 28, 23))  # Friday 11pm
+    assert label == "Closes 2:00 AM"
+    assert sort == 24 * 60 + 2 * 60
+
+
+def test_todays_close_label_24_hours():
+    hours = [{"days": [0, 1, 2, 3, 4, 5, 6], "open": "00:00", "close": "00:00"}]
+    label, sort = todays_close_label(hours, _at(2026, 8, 31, 17))
+    assert label == "Open 24 hours"
+    assert sort == 24 * 60
