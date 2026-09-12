@@ -3,22 +3,21 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, Search, Sparkles, TrendingDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DishVisual } from "@/components/DishVisual";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { SearchBox } from "@/components/SearchBox";
-import { getFilterMeta, listMenuItems, listRestaurants } from "@/lib/api";
+import { getFeaturedMenu, getFilterMeta, listRestaurants } from "@/lib/api";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { formatPrice, prettyCategory } from "@/lib/format";
 import type { FilterMeta, MenuItem, RestaurantSummary } from "@/lib/types";
 
-const CLASSIC_DISHES = ["CALAMARI", "CARBONARA", "LOBSTER_RAVIOLI", "CHICKEN_PARM", "CANNOLI"];
-
 export function DiscoverHome() {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const [classics, setClassics] = useState<MenuItem[]>([]);
+  const [bestValue, setBestValue] = useState<MenuItem[]>([]);
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,42 +25,27 @@ export function DiscoverHome() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
-      listMenuItems({ priced_only: "true", limit: "160" }, controller.signal),
+      getFeaturedMenu(controller.signal),
       listRestaurants(),
       getFilterMeta(),
     ])
-      .then(([menu, places, filterMeta]) => {
-        setItems(menu.items);
+      .then(([featured, places, filterMeta]) => {
+        setClassics(featured.classics);
+        setBestValue(featured.best_value);
         setRestaurants(places);
         setMeta(filterMeta);
       })
       .catch((error: Error) => {
-        if (error.name !== "AbortError") setItems([]);
+        if (error.name !== "AbortError") {
+          setClassics([]);
+          setBestValue([]);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, []);
-
-  const classics = useMemo(() => {
-    const unique = new Map<string, MenuItem>();
-    for (const item of items) {
-      const key = item.canonical_dish ?? item.raw_name;
-      if (!CLASSIC_DISHES.includes(item.canonical_dish ?? "") || unique.has(key)) continue;
-      unique.set(key, item);
-    }
-    return [...unique.values()].slice(0, 4);
-  }, [items]);
-
-  const bestValue = useMemo(
-    () =>
-      [...items]
-        .filter((item) => item.pct_vs_median != null && item.pct_vs_median < 0)
-        .sort((a, b) => (a.pct_vs_median ?? 0) - (b.pct_vs_median ?? 0))
-        .slice(0, 4),
-    [items],
-  );
   const openPlaces = restaurants.filter((restaurant) => restaurant.open_now).slice(0, 4);
   const categories = (meta?.categories ?? FEATURED_CATEGORIES)
     .filter((category) => FEATURED_CATEGORIES.includes(category))

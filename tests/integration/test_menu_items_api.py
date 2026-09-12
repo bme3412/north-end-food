@@ -63,6 +63,30 @@ def test_restaurant_photo_propagates_to_items_and_places(client):
     assert body["places"][0]["photo_url"] == expected
 
 
+def test_percent_token_is_literal_not_an_ilike_wildcard(client):
+    body = client.get("/menu-items", params={"q": "%"}).json()
+    unfiltered = client.get("/menu-items").json()
+    assert body["parsed_tokens"] == ["%"]
+    assert body["total"] < unfiltered["total"]
+
+
+def test_featured_menu_returns_classics_and_best_value(client):
+    body = client.get("/menu-items/featured").json()
+    assert 1 <= len(body["classics"]) <= 4
+    assert len({item["canonical_dish"] for item in body["classics"]}) == len(body["classics"])
+    assert {item["canonical_dish"] for item in body["classics"]} <= {
+        "CALAMARI",
+        "CARBONARA",
+        "LOBSTER_RAVIOLI",
+        "CHICKEN_PARMIGIANA",
+        "CANNOLI",
+    }
+    assert 1 <= len(body["best_value"]) <= 4
+    assert all(item["pct_vs_median"] is not None and item["pct_vs_median"] < 0 for item in body["best_value"])
+    pcts = [item["pct_vs_median"] for item in body["best_value"]]
+    assert pcts == sorted(pcts)
+
+
 def test_meta_reflects_seeded_data(client):
     response = client.get("/menu-items/meta")
     body = response.json()
@@ -186,8 +210,10 @@ def test_service_mode_filter_excludes_only_confirmed_false(client, db_session):
     takeout_only = client.get("/menu-items", params={"service_mode": "takeout"}).json()
 
     assert takeout_only["total"] < unfiltered["total"]
-    assert all(item["restaurant_id"] != "NE_0002" for item in takeout_only["items"])
-    assert any(item["restaurant_id"] == "NE_0001" for item in takeout_only["items"])
+    excluded = client.get("/menu-items", params={"service_mode": "takeout", "restaurant_id": "NE_0002"}).json()
+    kept = client.get("/menu-items", params={"service_mode": "takeout", "restaurant_id": "NE_0001"}).json()
+    assert excluded["total"] == 0
+    assert kept["total"] > 0
 
 
 def test_menu_item_not_found(client):
@@ -225,6 +251,14 @@ def test_market_price_items_have_no_pct_vs_median(client):
     for item in body["items"]:
         if item["market_price"]:
             assert item["pct_vs_median"] is None
+
+
+def test_open_now_pagination_total_is_the_filtered_corpus(client):
+    open_now = client.get("/menu-items", params={"open_now": "true", "limit": 3, "offset": 0}).json()
+    assert open_now["total"] >= len(open_now["items"])
+    if open_now["total"] > 3:
+        assert len(open_now["items"]) == 3
+    assert all(item["open_now"] is True for item in open_now["items"])
 
 
 def test_list_pagination_keeps_map_places_on_the_same_page(client):

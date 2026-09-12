@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.search import parse_query
+from app.search import escape_like, like_pattern, parse_query
 
 
 def test_empty_query():
@@ -54,7 +54,7 @@ def test_bare_comparison_operators():
 
 def test_dietary_aliases_deduped_and_normalized():
     parsed = parse_query("vegan, veggie, gluten-free pasta")
-    assert parsed.dietary == ("vegetarian", "gluten-free")
+    assert parsed.dietary == ("vegan", "vegetarian", "gluten-free")
     assert parsed.tokens == ["pasta"]
 
 
@@ -92,3 +92,9 @@ def test_whole_pizza_query_extracts_serving_unit():
 def test_sliced_non_pizza_food_is_not_treated_as_pizza_serving():
     parsed = parse_query("thinly sliced prosciutto")
     assert parsed.pizza_serving is None
+
+
+def test_like_pattern_escapes_percent_and_underscore():
+    assert escape_like("100%") == "100\\%"
+    assert escape_like("foo_bar") == "foo\\_bar"
+    assert like_pattern("%") == "%\\%%"

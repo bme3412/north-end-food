@@ -2,23 +2,45 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
-from app.integrations import places
-from app.integrations.usage import reserve_monthly_attempt
 from app.hours import compute_open_status, format_hours_summary
+from app.integrations import places
+from app.integrations.photo_cache import get_cached_photo, set_cached_photo
+from app.integrations.rate_limit import allow_photo_request
+from app.integrations.usage import release_monthly_attempt, reserve_monthly_attempt
 from app.models import MenuItem, MenuSnapshot, MenuSource, Restaurant, RestaurantExternalId
-from app.queries import latest_snapshot_ids, price_profile
+from app.queries import latest_snapshot_ids, price_profile, restaurant_ids_matching_open_status
 from app.schemas import GooglePhotoAuthorOut, GooglePhotoOut, RestaurantDetail, RestaurantExternalIdOut, RestaurantSummary
 from app.schemas.menu import CategoryMedianOut, PriceProfileOut, ProvenanceEntry
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 PHOTO_VARIANTS = {"thumbnail": (240, 240), "card": (720, 540), "hero": (1600, 1000)}
 NO_STORE_HEADERS = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _photo_out(photo: places.PlacePhoto) -> GooglePhotoOut:
+    return GooglePhotoOut(
+        image_url=photo.image_url,
+        width_px=photo.width_px,
+        height_px=photo.height_px,
+        google_maps_uri=photo.google_maps_uri,
+        flag_content_uri=photo.flag_content_uri,
+        authors=[GooglePhotoAuthorOut(display_name=a.display_name, profile_uri=a.profile_uri, avatar_uri=a.avatar_uri) for a in photo.authors],
+    )
 
 
 def _to_summary(
@@ -72,16 +94,20 @@ def list_restaurants(
     at_until: str | None = Query(None, pattern=r"^\d{2}:\d{2}$", description="Optional end of a preview range 'HH:MM' -- requires being open for the whole [at_time, at_until) window."),
     db: Session = Depends(get_db),
 ) -> list[RestaurantSummary]:
-    restaurants = list(db.scalars(select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)))
-    summaries = [_to_summary(restaurant, at_day=at_day, at_time=at_time, at_until=at_until) for restaurant in restaurants]
+    stmt = select(Restaurant).where(Restaurant.active.is_(True)).order_by(Restaurant.name)
     if open_now is not None:
-        summaries = [summary for summary in summaries if summary.open_now == open_now]
-    return summaries
+        matching_ids = restaurant_ids_matching_open_status(
+            db, open_now=open_now, at_day=at_day, at_time=at_time, at_until=at_until
+        )
+        stmt = stmt.where(Restaurant.restaurant_id.in_(matching_ids or [""]))
+    restaurants = list(db.scalars(stmt))
+    return [_to_summary(restaurant, at_day=at_day, at_time=at_time, at_until=at_until) for restaurant in restaurants]
 
 
 @router.get("/{restaurant_id}/google-photo", response_model=GooglePhotoOut)
 def get_google_photo(
     restaurant_id: str,
+    request: Request,
     response: Response,
     variant: str = Query("card", pattern="^(thumbnail|card|hero)$"),
     db: Session = Depends(get_db),
@@ -104,23 +130,32 @@ def get_google_photo(
         raise HTTPException(404, "No verified Google Place", headers=NO_STORE_HEADERS)
     if not places.photos_are_configured():
         raise HTTPException(503, "Google photo fallback is unavailable", headers=NO_STORE_HEADERS)
+
+    cached = get_cached_photo(restaurant_id, variant)
+    if cached is not None:
+        return cached
+
+    allowed, retry_after = allow_photo_request(_client_ip(request))
+    if not allowed:
+        raise HTTPException(
+            429,
+            "Too many Google photo requests",
+            headers={**NO_STORE_HEADERS, "Retry-After": str(retry_after)},
+        )
     if not reserve_monthly_attempt(db, provider="google_places", metric="photo_media", cap=settings.google_place_photo_monthly_cap):
         raise HTTPException(429, "Monthly Google photo limit reached", headers=NO_STORE_HEADERS)
     width, height = PHOTO_VARIANTS[variant]
     try:
         photo = places.fetch_place_photo(external_id.external_id, max_width_px=width, max_height_px=height)
     except (httpx.HTTPError, ValueError):
+        release_monthly_attempt(db, provider="google_places", metric="photo_media")
         raise HTTPException(503, "Google photo service unavailable", headers=NO_STORE_HEADERS) from None
     if photo is None:
+        release_monthly_attempt(db, provider="google_places", metric="photo_media")
         raise HTTPException(404, "No Google photo available", headers=NO_STORE_HEADERS)
-    return GooglePhotoOut(
-        image_url=photo.image_url,
-        width_px=photo.width_px,
-        height_px=photo.height_px,
-        google_maps_uri=photo.google_maps_uri,
-        flag_content_uri=photo.flag_content_uri,
-        authors=[GooglePhotoAuthorOut(display_name=a.display_name, profile_uri=a.profile_uri, avatar_uri=a.avatar_uri) for a in photo.authors],
-    )
+    payload = _photo_out(photo)
+    set_cached_photo(restaurant_id, variant, payload)
+    return payload
 
 
 @router.get("/{restaurant_id}", response_model=RestaurantDetail)

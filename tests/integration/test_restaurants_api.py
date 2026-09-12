@@ -1,8 +1,18 @@
 from datetime import datetime, timezone
 
+import httpx
+
+from app.integrations.photo_cache import clear_photo_cache
 from app.integrations.places import PhotoAuthor, PlacePhoto
-from app.models import RestaurantExternalId
+from app.integrations.rate_limit import reset_photo_rate_limiter
+from app.models import ExternalApiUsage, RestaurantExternalId
 from app.routers import restaurants as restaurants_router
+
+
+def test_health_requires_database(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def test_list_restaurants_returns_forty_four_active(client):
@@ -96,15 +106,25 @@ def _verified_google_id(db_session, restaurant_id="NE_0002"):
     db_session.commit()
 
 
-def test_google_photo_success_is_ephemeral_and_attributed(client, db_session, monkeypatch):
-    _verified_google_id(db_session)
-    monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
-    monkeypatch.setattr(restaurants_router, "reserve_monthly_attempt", lambda *args, **kwargs: True)
-    monkeypatch.setattr(restaurants_router.places, "fetch_place_photo", lambda *args, **kwargs: PlacePhoto(
+def _reset_photo_guards():
+    clear_photo_cache()
+    reset_photo_rate_limiter()
+
+
+def _sample_photo() -> PlacePhoto:
+    return PlacePhoto(
         "https://lh3.googleusercontent.com/ephemeral", 1200, 800,
         "https://maps.google.com/photo/source", "https://maps.google.com/photo/report",
         (PhotoAuthor("Author", "https://maps.google.com/author", "https://example.com/avatar"),),
-    ))
+    )
+
+
+def test_google_photo_success_is_ephemeral_and_attributed(client, db_session, monkeypatch):
+    _reset_photo_guards()
+    _verified_google_id(db_session)
+    monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
+    monkeypatch.setattr(restaurants_router, "reserve_monthly_attempt", lambda *args, **kwargs: True)
+    monkeypatch.setattr(restaurants_router.places, "fetch_place_photo", lambda *args, **kwargs: _sample_photo())
     response = client.get("/restaurants/NE_0002/google-photo?variant=hero")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "private, no-store"
@@ -113,6 +133,7 @@ def test_google_photo_success_is_ephemeral_and_attributed(client, db_session, mo
 
 
 def test_google_photo_requires_verified_place(client, monkeypatch):
+    _reset_photo_guards()
     monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
     response = client.get("/restaurants/NE_0002/google-photo")
     assert response.status_code == 404
@@ -120,12 +141,14 @@ def test_google_photo_requires_verified_place(client, monkeypatch):
 
 
 def test_owned_photo_takes_precedence(client, monkeypatch):
+    _reset_photo_guards()
     monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
     monkeypatch.setattr(restaurants_router, "reserve_monthly_attempt", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("quota used")))
     assert client.get("/restaurants/NE_0001/google-photo").status_code == 404
 
 
 def test_google_photo_monthly_cap(client, db_session, monkeypatch):
+    _reset_photo_guards()
     _verified_google_id(db_session)
     monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
     monkeypatch.setattr(restaurants_router, "reserve_monthly_attempt", lambda *args, **kwargs: False)
@@ -133,6 +156,50 @@ def test_google_photo_monthly_cap(client, db_session, monkeypatch):
 
 
 def test_google_photo_disabled(client, db_session, monkeypatch):
+    _reset_photo_guards()
     _verified_google_id(db_session)
     monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: False)
     assert client.get("/restaurants/NE_0002/google-photo").status_code == 503
+
+
+def test_google_photo_failed_fetch_does_not_consume_quota(client, db_session, monkeypatch):
+    _reset_photo_guards()
+    _verified_google_id(db_session)
+    monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
+    monkeypatch.setattr(restaurants_router.settings, "google_place_photo_monthly_cap", 900)
+
+    def boom(*_args, **_kwargs):
+        raise httpx.HTTPError("unavailable")
+
+    monkeypatch.setattr(restaurants_router.places, "fetch_place_photo", boom)
+    assert client.get("/restaurants/NE_0002/google-photo").status_code == 503
+    usage = db_session.get(ExternalApiUsage, ("google_places", "photo_media", datetime.now(timezone.utc).date().replace(day=1)))
+    assert usage is None or usage.attempt_count == 0
+
+
+def test_google_photo_cache_skips_second_places_call(client, db_session, monkeypatch):
+    _reset_photo_guards()
+    _verified_google_id(db_session)
+    calls = {"n": 0}
+
+    def fetch(*_args, **_kwargs):
+        calls["n"] += 1
+        return _sample_photo()
+
+    monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
+    monkeypatch.setattr(restaurants_router.places, "fetch_place_photo", fetch)
+    assert client.get("/restaurants/NE_0002/google-photo?variant=card").status_code == 200
+    assert client.get("/restaurants/NE_0002/google-photo?variant=card").status_code == 200
+    assert calls["n"] == 1
+
+
+def test_google_photo_ip_limit_returns_429(client, db_session, monkeypatch):
+    _reset_photo_guards()
+    _verified_google_id(db_session)
+    monkeypatch.setattr(restaurants_router.places, "photos_are_configured", lambda: True)
+    monkeypatch.setattr(restaurants_router.places, "fetch_place_photo", lambda *_args, **_kwargs: _sample_photo())
+    monkeypatch.setattr("app.integrations.rate_limit.PHOTO_IP_LIMIT", 1)
+    monkeypatch.setattr(restaurants_router, "allow_photo_request", lambda ip: (False, 12) if ip else (False, 12))
+    response = client.get("/restaurants/NE_0002/google-photo?variant=hero")
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "12"

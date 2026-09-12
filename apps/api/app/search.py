@@ -4,6 +4,15 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 
+def escape_like(token: str) -> str:
+    """Escape ILIKE wildcards so user input is matched literally."""
+    return token.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def like_pattern(token: str) -> str:
+    return f"%{escape_like(token)}%"
+
+
 STOPWORDS = {
     "a",
     "an",
@@ -42,7 +51,7 @@ WHOLE_PIZZA = re.compile(r"\b(?:whole|full|pie)\b", re.I)
 DIET_ALIASES = {
     "vegetarian": "vegetarian",
     "veggie": "vegetarian",
-    "vegan": "vegetarian",
+    "vegan": "vegan",
     "gluten-free": "gluten-free",
     "glutenfree": "gluten-free",
     "gf": "gluten-free",

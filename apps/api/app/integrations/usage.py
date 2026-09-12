@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -25,3 +26,23 @@ def reserve_monthly_attempt(db: Session, *, provider: str, metric: str, cap: int
     reserved = db.scalar(statement)
     db.commit()
     return reserved is not None
+
+
+def release_monthly_attempt(db: Session, *, provider: str, metric: str, now: datetime | None = None) -> bool:
+    """Refund one reserved attempt after a failed provider call."""
+    current = now or datetime.now(timezone.utc)
+    period_start = current.date().replace(day=1)
+    statement = (
+        update(ExternalApiUsage)
+        .where(
+            ExternalApiUsage.provider == provider,
+            ExternalApiUsage.metric == metric,
+            ExternalApiUsage.period_start == period_start,
+            ExternalApiUsage.attempt_count > 0,
+        )
+        .values(attempt_count=ExternalApiUsage.attempt_count - 1, updated_at=current)
+        .returning(ExternalApiUsage.attempt_count)
+    )
+    released = db.scalar(statement)
+    db.commit()
+    return released is not None

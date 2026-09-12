@@ -6,7 +6,9 @@ from decimal import Decimal
 from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.hours import compute_open_status
 from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.search import like_pattern
 from app.servings import classify_pizza_serving
 
 
@@ -19,11 +21,11 @@ def dish_match_clause(term: str) -> ColumnElement[bool]:
     the same pattern as ingredient_match_clause below, one level up the
     ontology (Dish rather than Ingredient).
     """
-    like = f"%{term.strip().lower()}%"
+    like = like_pattern(term.strip().lower())
     matching_dish_ids = select(CanonicalDish.canonical_dish_id).where(
         or_(
-            CanonicalDish.canonical_name.ilike(like),
-            func.array_to_string(CanonicalDish.aliases, " ").ilike(like),
+            CanonicalDish.canonical_name.ilike(like, escape="\\"),
+            func.array_to_string(CanonicalDish.aliases, " ").ilike(like, escape="\\"),
         )
     )
     return MenuItem.canonical_dish.in_(matching_dish_ids)
@@ -36,11 +38,11 @@ def ingredient_match_clause(term: str) -> ColumnElement[bool]:
     mozzarella"), which a raw-array ILIKE on the item's own text never
     could — the alias lives on the Ingredient, not on that item.
     """
-    like = f"%{term.strip().lower()}%"
+    like = like_pattern(term.strip().lower())
     matching_ingredient_ids = select(Ingredient.ingredient_id).where(
         or_(
-            Ingredient.canonical_name.ilike(like),
-            func.array_to_string(Ingredient.aliases, " ").ilike(like),
+            Ingredient.canonical_name.ilike(like, escape="\\"),
+            func.array_to_string(Ingredient.aliases, " ").ilike(like, escape="\\"),
         )
     )
     return MenuItem.menu_item_id.in_(
@@ -63,6 +65,23 @@ def latest_snapshot_ids(db: Session) -> Select[tuple[str]]:
         .subquery()
     )
     return select(ranked.c.menu_snapshot_id).where(ranked.c.rn == 1)
+
+
+def restaurant_ids_matching_open_status(
+    db: Session,
+    *,
+    open_now: bool,
+    at_day: int | None = None,
+    at_time: str | None = None,
+    at_until: str | None = None,
+) -> list[str]:
+    """Compute open/closed restaurant IDs in Python, then use them as a SQL IN list."""
+    rows = db.execute(select(Restaurant.restaurant_id, Restaurant.hours).where(Restaurant.active.is_(True))).all()
+    return [
+        restaurant_id
+        for restaurant_id, hours in rows
+        if compute_open_status(hours, at_day, at_time, at_until) == open_now
+    ]
 
 
 def item_with_source_query(db: Session) -> Select:

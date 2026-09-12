@@ -173,6 +173,11 @@ class PlaceMatch(BaseModel):
     delivery: bool | None = None
 
 
+class FeaturedMenuOut(BaseModel):
+    classics: list[MenuItemOut] = Field(default_factory=list)
+    best_value: list[MenuItemOut] = Field(default_factory=list)
+
+
 class MenuItemList(BaseModel):
     total: int
     items: list[MenuItemOut]

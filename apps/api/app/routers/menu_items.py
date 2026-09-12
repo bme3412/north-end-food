@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.hours import compute_open_status, format_hours_summary
-from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant
+from app.models import CanonicalDish, Ingredient, MenuItem, MenuItemIngredient, MenuSnapshot, MenuSource, Restaurant, RestaurantPlaceStats
 from app.queries import (
     DishCategoryMedians,
     category_summary,
@@ -17,13 +17,14 @@ from app.queries import (
     item_with_source_query,
     latest_snapshot_ids,
     resolve_search_intent,
+    restaurant_ids_matching_open_status,
     sibling_dishes,
 )
 from app.ranking import balanced_secondary_score, fuzzy_token_clause, relevance_expressions
-from app.schemas import MenuItemList, MenuItemOut
+from app.schemas import FeaturedMenuOut, MenuItemList, MenuItemOut
 from app.schemas.menu import CategoryDishOut, CategorySummaryOut, PlaceMatch, SimilarDishesOut, SimilarDishOut
-from app.search import parse_query
-from app.servings import classify_pizza_serving
+from app.search import like_pattern, parse_query
+from app.servings import classify_pizza_serving, pizza_serving_sql_expr
 
 router = APIRouter(prefix="/menu-items", tags=["menu-items"])
 
@@ -112,16 +113,16 @@ def _to_out(
 
 
 def _token_clause(token: str):
-    like = f"%{token}%"
+    like = like_pattern(token)
     return or_(
         fuzzy_token_clause(token),
-        MenuItem.canonical_dish.ilike(like),
-        MenuItem.canonical_category.ilike(like),
-        MenuItem.pasta_type.ilike(like),
-        MenuItem.sauce.ilike(like),
-        Restaurant.name.ilike(like),
-        func.array_to_string(MenuItem.protein, " ").ilike(like),
-        func.array_to_string(MenuItem.dietary_tags, " ").ilike(like),
+        MenuItem.canonical_dish.ilike(like, escape="\\"),
+        MenuItem.canonical_category.ilike(like, escape="\\"),
+        MenuItem.pasta_type.ilike(like, escape="\\"),
+        MenuItem.sauce.ilike(like, escape="\\"),
+        Restaurant.name.ilike(like, escape="\\"),
+        func.array_to_string(MenuItem.protein, " ").ilike(like, escape="\\"),
+        func.array_to_string(MenuItem.dietary_tags, " ").ilike(like, escape="\\"),
         ingredient_match_clause(token),
         dish_match_clause(token),
     )
@@ -147,6 +148,13 @@ def _apply_filters(
     parsed_min: Decimal | None,
     parsed_max: Decimal | None,
     parsed_dietary: tuple[str, ...],
+    open_now: bool | None = None,
+    service_mode: str | None = None,
+    pizza_serving: str | None = None,
+    at_day: int | None = None,
+    at_time: str | None = None,
+    at_until: str | None = None,
+    db: Session | None = None,
 ) -> Select:
     for token in parsed_tokens:
         stmt = stmt.where(_token_clause(token))
@@ -198,6 +206,22 @@ def _apply_filters(
         stmt = stmt.where(MenuItem.price <= high)
     if priced_only:
         stmt = stmt.where(MenuItem.price.is_not(None), MenuItem.market_price.is_(False))
+
+    if open_now is not None and db is not None:
+        matching_ids = restaurant_ids_matching_open_status(
+            db, open_now=open_now, at_day=at_day, at_time=at_time, at_until=at_until
+        )
+        stmt = stmt.where(MenuItem.restaurant_id.in_(matching_ids or [""]))
+
+    if service_mode is not None:
+        flag = RestaurantPlaceStats.takeout if service_mode == "takeout" else RestaurantPlaceStats.dine_in
+        stmt = stmt.outerjoin(
+            RestaurantPlaceStats,
+            RestaurantPlaceStats.restaurant_id == Restaurant.restaurant_id,
+        ).where(flag.is_not(False))
+
+    if pizza_serving is not None:
+        stmt = stmt.where(pizza_serving_sql_expr() == pizza_serving)
     return stmt
 
 
@@ -242,40 +266,33 @@ def _places(items: list[MenuItemOut]) -> list[PlaceMatch]:
 @router.get("/meta")
 def filter_meta(db: Session = Depends(get_db)) -> dict:
     latest = latest_snapshot_ids(db).subquery()
-    rows = db.execute(
-        select(MenuItem).where(MenuItem.menu_snapshot_id.in_(select(latest)))
-    ).scalars()
-    categories: set[str] = set()
-    proteins: set[str] = set()
-    dietary: set[str] = set()
-    prices: list[Decimal] = []
-    for item in rows:
-        if item.canonical_category:
-            categories.add(item.canonical_category)
-        for value in item.protein or []:
-            proteins.add(value)
-        for value in item.dietary_tags or []:
-            dietary.add(value)
-        if item.price is not None:
-            prices.append(item.price)
+    latest_items = MenuItem.menu_snapshot_id.in_(select(latest))
+    categories = db.scalars(
+        select(MenuItem.canonical_category).where(latest_items, MenuItem.canonical_category.is_not(None)).distinct()
+    ).all()
+    proteins = db.scalars(select(func.unnest(MenuItem.protein)).where(latest_items).distinct()).all()
+    dietary = db.scalars(select(func.unnest(MenuItem.dietary_tags)).where(latest_items).distinct()).all()
+    min_price, max_price = db.execute(
+        select(func.min(MenuItem.price), func.max(MenuItem.price)).where(latest_items, MenuItem.price.is_not(None))
+    ).one()
     ingredients = db.scalars(
         select(Ingredient.canonical_name)
         .join(MenuItemIngredient, MenuItemIngredient.ingredient_id == Ingredient.ingredient_id)
         .join(MenuItem, MenuItem.menu_item_id == MenuItemIngredient.menu_item_id)
-        .where(MenuItem.menu_snapshot_id.in_(select(latest)))
+        .where(latest_items)
         .distinct()
     ).all()
     ingredient_categories = db.scalars(
         select(Ingredient.ingredient_category)
         .join(MenuItemIngredient, MenuItemIngredient.ingredient_id == Ingredient.ingredient_id)
         .join(MenuItem, MenuItem.menu_item_id == MenuItemIngredient.menu_item_id)
-        .where(MenuItem.menu_snapshot_id.in_(select(latest)), Ingredient.ingredient_category.is_not(None))
+        .where(latest_items, Ingredient.ingredient_category.is_not(None))
         .distinct()
     ).all()
     subcategories = db.scalars(
         select(CanonicalDish.subcategory)
         .join(MenuItem, MenuItem.canonical_dish == CanonicalDish.canonical_dish_id)
-        .where(MenuItem.menu_snapshot_id.in_(select(latest)), CanonicalDish.subcategory.is_not(None))
+        .where(latest_items, CanonicalDish.subcategory.is_not(None))
         .distinct()
     ).all()
     return {
@@ -285,9 +302,39 @@ def filter_meta(db: Session = Depends(get_db)) -> dict:
         "dietary": sorted(dietary),
         "ingredients": sorted(ingredients),
         "ingredient_categories": sorted(ingredient_categories),
-        "min_price": float(min(prices)) if prices else None,
-        "max_price": float(max(prices)) if prices else None,
+        "min_price": float(min_price) if min_price is not None else None,
+        "max_price": float(max_price) if max_price is not None else None,
     }
+
+
+CLASSIC_DISH_IDS = ("CALAMARI", "CARBONARA", "LOBSTER_RAVIOLI", "CHICKEN_PARMIGIANA", "CANNOLI")
+
+
+@router.get("/featured", response_model=FeaturedMenuOut)
+def featured_menu(db: Session = Depends(get_db)) -> FeaturedMenuOut:
+    medians = dish_and_category_medians(db)
+    stmt = item_with_source_query(db).where(
+        MenuItem.price.is_not(None),
+        MenuItem.market_price.is_(False),
+    )
+    items = [
+        _to_out(item, snapshot, source, restaurant, medians)
+        for item, snapshot, source, restaurant in db.execute(stmt).all()
+    ]
+    classics: list[MenuItemOut] = []
+    seen_dishes: set[str] = set()
+    for item in items:
+        if item.canonical_dish not in CLASSIC_DISH_IDS or item.canonical_dish in seen_dishes:
+            continue
+        seen_dishes.add(item.canonical_dish)
+        classics.append(item)
+        if len(classics) == 4:
+            break
+    best_value = sorted(
+        (item for item in items if item.pct_vs_median is not None and item.pct_vs_median < 0),
+        key=lambda item: item.pct_vs_median or 0,
+    )[:4]
+    return FeaturedMenuOut(classics=classics, best_value=best_value)
 
 
 @router.get("/similar-dishes", response_model=SimilarDishesOut)
@@ -372,13 +419,14 @@ def list_menu_items(
         "relevance",
         description="relevance (default; ranked by text match when q is set, else price) | price | name",
     ),
-    limit: int | None = Query(None, ge=1, le=500, description="Optional response page size for list clients"),
+    limit: int = Query(200, ge=1, le=500, description="Response page size"),
     offset: int = Query(0, ge=0, description="Number of matching menu items to skip"),
     db: Session = Depends(get_db),
 ) -> MenuItemList:
     parsed = parse_query(q)
     intent = resolve_search_intent(db, q)
     medians = dish_and_category_medians(db)
+    requested_pizza_serving = pizza_serving or parsed.pizza_serving
     stmt = item_with_source_query(db)
     stmt = _apply_filters(
         stmt,
@@ -399,30 +447,23 @@ def list_menu_items(
         parsed_min=parsed.min_price,
         parsed_max=parsed.max_price,
         parsed_dietary=parsed.dietary,
+        open_now=open_now,
+        service_mode=service_mode,
+        pizza_serving=requested_pizza_serving,
+        at_day=at_day,
+        at_time=at_time,
+        at_until=at_until,
+        db=db,
     )
     intent_ranked = sort == "relevance" and bool(parsed.tokens)
-    if sort == "name":
-        stmt = stmt.order_by(MenuItem.raw_name)
-    elif sort == "price":
-        stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
-    elif intent_ranked:
+    if intent_ranked:
         intent_tier, match_quality = relevance_expressions(parsed.tokens)
-        stmt = stmt.add_columns(
+        ranked_stmt = stmt.add_columns(
             intent_tier.label("intent_tier"),
             match_quality.label("match_quality"),
-        ).order_by(
-            intent_tier,
-            match_quality.desc(),
-            MenuItem.raw_name,
-            MenuItem.menu_item_id,
         )
-    else:
-        stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name)
-    rows = db.execute(stmt).all()
-
-    ranked_items: list[tuple[MenuItemOut, int, float]] = []
-    if intent_ranked:
-        for item, snapshot, source, restaurant, intent_tier, match_quality in rows:
+        ranked_items: list[tuple[MenuItemOut, int, float]] = []
+        for item, snapshot, source, restaurant, row_intent_tier, row_match_quality in db.execute(ranked_stmt).all():
             ranked_items.append(
                 (
                     _to_out(
@@ -435,40 +476,17 @@ def list_menu_items(
                         at_time=at_time,
                         at_until=at_until,
                     ),
-                    int(intent_tier),
-                    float(match_quality or 0),
+                    int(row_intent_tier),
+                    float(row_match_quality or 0),
                 )
             )
-        items = [record[0] for record in ranked_items]
-    else:
-        items = [
-            _to_out(item, snapshot, source, restaurant, medians, at_day=at_day, at_time=at_time, at_until=at_until)
-            for item, snapshot, source, restaurant in rows
-        ]
-
-    def include_item(item: MenuItemOut) -> bool:
-        if open_now is not None and item.open_now != open_now:
-            return False
-        if service_mode is not None:
-            # Unknown service-mode data is retained; only a confirmed false
-            # excludes a restaurant.
-            flag = "takeout" if service_mode == "takeout" else "dine_in"
-            if getattr(item, flag) is False:
-                return False
-        requested_pizza_serving = pizza_serving or parsed.pizza_serving
-        if requested_pizza_serving is not None and item.pizza_serving != requested_pizza_serving:
-            return False
-        return True
-
-    if intent_ranked:
-        ranked_items = [record for record in ranked_items if include_item(record[0])]
 
         def rank_key(record: tuple[MenuItemOut, int, float]):
-            item, intent_tier, match_quality = record
+            item, row_intent_tier, row_match_quality = record
             secondary = balanced_secondary_score(
                 available=item.available,
                 open_now=item.open_now,
-                match_quality=match_quality,
+                match_quality=row_match_quality,
                 rating=item.rating,
                 review_count=item.review_count,
                 pct_vs_median=item.pct_vs_median,
@@ -476,7 +494,7 @@ def list_menu_items(
                 longitude=item.longitude,
             )
             return (
-                intent_tier,
+                row_intent_tier,
                 -secondary,
                 item.raw_name.lower(),
                 item.restaurant_name.lower(),
@@ -485,11 +503,19 @@ def list_menu_items(
 
         ranked_items.sort(key=rank_key)
         items = [record[0] for record in ranked_items]
+        total = len(items)
+        paged_items = items[offset : offset + limit]
     else:
-        items = [item for item in items if include_item(item)]
-
-    total = len(items)
-    paged_items = items[offset : offset + limit] if limit is not None else items[offset:]
+        if sort == "name":
+            stmt = stmt.order_by(MenuItem.raw_name, MenuItem.menu_item_id)
+        else:
+            stmt = stmt.order_by(MenuItem.price.nulls_last(), MenuItem.raw_name, MenuItem.menu_item_id)
+        total = int(db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0)
+        rows = db.execute(stmt.offset(offset).limit(limit)).all()
+        paged_items = [
+            _to_out(item, snapshot, source, restaurant, medians, at_day=at_day, at_time=at_time, at_until=at_until)
+            for item, snapshot, source, restaurant in rows
+        ]
     # Map pins and the item list must describe the same page. Building
     # places from the full match set made pins whose dishes were truncated
     # by limit/offset open an empty popup.

@@ -56,6 +56,14 @@ def test_places_preserve_the_best_matching_item_order(client):
     assert body["places"][0]["restaurant_id"] == body["items"][0]["restaurant_id"]
 
 
+def test_relevance_pagination_keeps_total_and_page_order(client):
+    full = client.get("/menu-items", params={"q": "cannoli"}).json()
+    page = client.get("/menu-items", params={"q": "cannoli", "limit": 3, "offset": 1}).json()
+    assert page["total"] == full["total"]
+    assert page["total"] >= 1
+    assert page["items"] == full["items"][1:4]
+
+
 def test_italian_dish_name_query_finds_its_raw_text(client):
     response = client.get("/menu-items", params={"q": "quattro formaggio"})
     body = response.json()

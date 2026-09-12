@@ -1,6 +1,10 @@
 import re
 from typing import Literal
 
+from sqlalchemy import ColumnElement, case, func, or_
+
+from app.models import MenuItem
+
 PizzaServing = Literal["slice", "whole", "unknown"]
 
 _SLICE = re.compile(r"\b(?:slice|slices|by the slice)\b", re.I)
@@ -30,3 +34,19 @@ def classify_pizza_serving(
     if _WHOLE.search(identity_text) or _PIZZA_SIZE.search(size or ""):
         return "whole"
     return "unknown"
+
+
+def pizza_serving_sql_expr() -> ColumnElement[str | None]:
+    """SQL mirror of classify_pizza_serving for WHERE/ORDER use."""
+    identity = func.concat_ws(" ", MenuItem.raw_name, MenuItem.menu_section, MenuItem.portion)
+    slice_match = identity.op("~*")(r"\m(?:slice|slices|by the slice)\M")
+    whole_match = or_(
+        identity.op("~*")(r"\m(?:whole|full pie|whole pie)\M"),
+        func.coalesce(MenuItem.size, "").op("~*")(r"\m\d{1,2}(?:\.\d+)?\s*(?:in(?:ch(?:es)?)?|[″”])"),
+    )
+    return case(
+        (or_(MenuItem.canonical_category.is_(None), MenuItem.canonical_category != "pizza"), None),
+        (slice_match, "slice"),
+        (whole_match, "whole"),
+        else_="unknown",
+    )

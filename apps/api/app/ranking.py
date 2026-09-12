@@ -16,6 +16,7 @@ from sqlalchemy import ColumnElement, and_, case, func, or_
 
 from app.models import MenuItem, Restaurant
 from app.queries import dish_match_clause
+from app.search import like_pattern
 
 # pg_trgm similarity() returns 0..1. 0.25 catches realistic single-word
 # typos ("carbonera" vs "Carbonara" scores well above this) without the
@@ -33,11 +34,11 @@ def fuzzy_token_clause(token: str) -> ColumnElement[bool]:
     "Carbonara" this way -- a bare ILIKE substring check never could, and
     this is the one already-idle index (migration 001) put to use.
     """
-    like = f"%{token}%"
+    like = like_pattern(token)
     return or_(
-        MenuItem.raw_name.ilike(like),
+        MenuItem.raw_name.ilike(like, escape="\\"),
         func.similarity(MenuItem.raw_name, token) > SIMILARITY_THRESHOLD,
-        MenuItem.raw_description.ilike(like),
+        MenuItem.raw_description.ilike(like, escape="\\"),
         func.similarity(func.coalesce(MenuItem.raw_description, ""), token) > SIMILARITY_THRESHOLD,
     )
 
@@ -58,14 +59,14 @@ def relevance_expressions(tokens: list[str]):
     """
     token_tiers = []
     for token in tokens:
-        like = f"%{token}%"
+        like = like_pattern(token)
         whole_word = MenuItem.raw_name.op("~*")(fr"\m{re.escape(token)}\M")
         fuzzy_name = or_(
-            MenuItem.raw_name.ilike(like),
+            MenuItem.raw_name.ilike(like, escape="\\"),
             func.similarity(MenuItem.raw_name, token) > SIMILARITY_THRESHOLD,
         )
         dish_match = or_(
-            MenuItem.canonical_dish.ilike(like),
+            MenuItem.canonical_dish.ilike(like, escape="\\"),
             dish_match_clause(token),
         )
         # Whole-word on the restaurant name, not ILIKE: "pizza" should not
@@ -73,10 +74,10 @@ def relevance_expressions(tokens: list[str]):
         # should promote that restaurant's items above description/category hits.
         restaurant_match = Restaurant.name.op("~*")(fr"\m{re.escape(token)}\M")
         description_match = or_(
-            MenuItem.raw_description.ilike(like),
+            MenuItem.raw_description.ilike(like, escape="\\"),
             func.similarity(func.coalesce(MenuItem.raw_description, ""), token) > SIMILARITY_THRESHOLD,
         )
-        category_match = MenuItem.canonical_category.ilike(like)
+        category_match = MenuItem.canonical_category.ilike(like, escape="\\")
         token_tiers.append(
             case(
                 (and_(whole_word, MenuItem.canonical_dish.is_not(None)), 0),

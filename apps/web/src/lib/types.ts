@@ -215,6 +215,11 @@ export type CategorySummary = {
   uncategorized_count: number;
 };
 
+export type FeaturedMenu = {
+  classics: MenuItem[];
+  best_value: MenuItem[];
+};
+
 export type FilterMeta = {
   categories: string[];
   subcategories: string[];

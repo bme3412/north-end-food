@@ -63,3 +63,7 @@ jobs:
       # exist on a clean checkout and fails with spurious "Cannot find name
       # 'LayoutProps'" errors, so build is the real typecheck here.
       - run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright
+        run: npx playwright test

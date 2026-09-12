@@ -1,4 +1,4 @@
-import type { CategorySummary, FilterMeta, GooglePhoto, MenuItemList, RestaurantDetail, RestaurantSummary, SearchSuggestions, SimilarDishesResponse } from "./types";
+import type { CategorySummary, FeaturedMenu, FilterMeta, GooglePhoto, MenuItemList, RestaurantDetail, RestaurantSummary, SearchSuggestions, SimilarDishesResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -33,6 +33,10 @@ export function getGooglePhoto(id: string, variant: "thumbnail" | "card" | "hero
 
 export function getFilterMeta(): Promise<FilterMeta> {
   return getJson("/menu-items/meta");
+}
+
+export function getFeaturedMenu(signal?: AbortSignal): Promise<FeaturedMenu> {
+  return getJson("/menu-items/featured", signal);
 }
 
 export function listMenuItems(params: Record<string, string | undefined>, signal?: AbortSignal): Promise<MenuItemList> {
