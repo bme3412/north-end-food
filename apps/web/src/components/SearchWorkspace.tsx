@@ -164,7 +164,10 @@ export function SearchWorkspace() {
         resolvedCategory,
         resolvedDish,
         resolvedRestaurantId,
-        groupKeys: grouped.map((group) => group.key),
+        groupKeys: [
+          ...grouped.map((group) => group.key),
+          ...dishSections.flatMap((section) => section.groups.map((group) => group.key)),
+        ],
         compareGroupKey,
       }),
     [
@@ -176,6 +179,7 @@ export function SearchWorkspace() {
       resolvedDish,
       resolvedRestaurantId,
       grouped,
+      dishSections,
       compareGroupKey,
     ],
   );
@@ -187,8 +191,16 @@ export function SearchWorkspace() {
   };
 
   const categoryFocus = searchView.kind === "category" ? searchView.category : null;
+  const organizedGroups = useMemo(
+    () => dishSections.flatMap((section) => section.groups),
+    [dishSections],
+  );
   const focusGroup =
-    searchView.kind === "dish" ? (grouped.find((group) => group.key === searchView.groupKey) ?? null) : null;
+    searchView.kind === "dish"
+      ? (organizedGroups.find((group) => group.key === searchView.groupKey)
+          ?? grouped.find((group) => group.key === searchView.groupKey)
+          ?? null)
+      : null;
 
   const sortedPlaces = useMemo(() => {
     if (restaurantSort === "matched") return places;
@@ -272,6 +284,7 @@ export function SearchWorkspace() {
             showMap={showMap}
             onSelectDish={(dishName) => setFilters((current) => applySearchQuery(current, dishName))}
             onBack={compareGroupKey ? () => setComparison(null) : undefined}
+            onOpen={setSelectedItem}
           />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />

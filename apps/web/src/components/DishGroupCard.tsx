@@ -1,3 +1,4 @@
+import { PriceRangeStrip } from "@/components/PriceRangeStrip";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { formatDollars, formatPrice, prettyCategory } from "@/lib/format";
 import { oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
@@ -25,6 +26,8 @@ export function DishGroupCard({
   const preview = ranked.slice(0, PREVIEW_ROWS);
   const hidden = ranked.length - preview.length;
   const category = group.items[0]?.canonical_category;
+  const medianPrice =
+    group.items[0]?.north_end_median_price != null ? Number(group.items[0].north_end_median_price) : null;
   const range =
     group.minPrice != null && group.maxPrice != null
       ? group.minPrice === group.maxPrice
@@ -55,6 +58,7 @@ export function DishGroupCard({
             {group.restaurantCount} place{group.restaurantCount === 1 ? "" : "s"}
             {range ? ` · ${range}` : null}
           </p>
+          <PriceRangeStrip minPrice={group.minPrice} maxPrice={group.maxPrice} medianPrice={medianPrice} />
         </div>
       </div>
 

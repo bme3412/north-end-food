@@ -26,7 +26,11 @@ export function pickSearchView({
   compareGroupKey: string | null;
 }): SearchView {
   const query = q.trim();
-  if (!query || selectedPlaceId) return { kind: "list" };
+  if (selectedPlaceId) return { kind: "list" };
+  if (compareGroupKey && groupKeys.includes(compareGroupKey)) {
+    return { kind: "dish", groupKey: compareGroupKey };
+  }
+  if (!query) return { kind: "list" };
 
   const servingInPlay = Boolean(pizzaServing || parsedPizzaServing);
   if (!servingInPlay && resolvedCategory) {
@@ -40,10 +44,6 @@ export function pickSearchView({
     if (exactDishGroups.length === 1) {
       return { kind: "dish", groupKey: exactDishGroups[0] };
     }
-  }
-
-  if (compareGroupKey && groupKeys.includes(compareGroupKey)) {
-    return { kind: "dish", groupKey: compareGroupKey };
   }
 
   if (resolvedRestaurantId) {

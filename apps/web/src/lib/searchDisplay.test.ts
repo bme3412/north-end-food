@@ -110,4 +110,16 @@ describe("pickSearchView", () => {
       }),
     ).toEqual({ kind: "dish", groupKey: "CHEESE_PIZZA::slice" });
   });
+
+  it("opens a compare card even when the query is empty", () => {
+    expect(
+      pickSearchView({
+        ...base,
+        q: "",
+        resolvedCategory: "pasta",
+        groupKeys: ["BOLOGNESE", "kids-cat-pasta"],
+        compareGroupKey: "kids-cat-pasta",
+      }),
+    ).toEqual({ kind: "dish", groupKey: "kids-cat-pasta" });
+  });
 });
