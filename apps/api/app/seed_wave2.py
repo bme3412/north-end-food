@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.seed_captured_menus import CAPTURED_MENUS
 from app.seed_data import item
 
 WAVE2_RESTAURANTS: list[dict[str, Any]] = [
@@ -147,7 +148,7 @@ WAVE2_RESTAURANTS: list[dict[str, Any]] = [
         "items": [
             item("Anna Maria's Famous Stuffed Meatballs", section="Favorite Dishes", raw_description="Ground veal and sirloin, cipollini onions, fire roasted peppers, fresh mozzarella, tomato basil sauce, grilled focaccia, whipped ricotta", canonical_category="italian_american", canonical_dish="MEATBALLS", protein=["veal", "beef"], ingredients=["cipollini onions", "roasted peppers", "mozzarella", "tomato basil sauce", "focaccia", "ricotta"], confidence=0.95),
             item("Ray Bourque Special", section="Favorite Dishes", raw_description="Veal Chop Parmesan served with a side of Pasta Bolognese", canonical_category="italian_american", canonical_dish="VEAL_PARMIGIANA", protein=["veal"], confidence=0.94),
-            item("Black Truffle Ricotta Gnocchi", section="Favorite Dishes", raw_description="House made ricotta gnocchi, wild mushroom ragu, spinach", canonical_category="pasta", canonical_dish="GNOCCHI", pasta_type="gnocchi", ingredients=["ricotta gnocchi", "wild mushroom ragu", "spinach", "black truffle"], confidence=0.95),
+            item("Black Truffle Ricotta Gnocchi", section="Favorite Dishes", raw_description="House made ricotta gnocchi, wild mushroom ragu, spinach", canonical_category="pasta", canonical_dish="GNOCCHI_FUNGHI", pasta_type="gnocchi", ingredients=["ricotta gnocchi", "wild mushroom ragu", "spinach", "black truffle"], confidence=0.95),
             item("Linguine with Clams", section="Pasta", canonical_category="pasta", pasta_type="linguine", protein=["clams"], confidence=0.7),
             item("Calamari", section="Antipasti", canonical_category="seafood", canonical_dish="CALAMARI", protein=["calamari"], confidence=0.7),
         ],
@@ -185,7 +186,7 @@ WAVE2_RESTAURANTS: list[dict[str, Any]] = [
             item("Insalata Caprese", section="Insalate", raw_description="Imported Bufala mozzarella, heirloom local tomato, basil, basil infused EVOO", raw_price_text="$20", price=20, canonical_category="salad", canonical_dish="CAPRESE", ingredients=["bufala mozzarella", "tomato", "basil"], dietary_tags=["vegetarian"], confidence=0.96),
             item("Rigatoni Pesto con Burrata", section="Arya's Signature Pasta", raw_description="Handmade rigatoni pasta, Clay's famous pesto sauce, house made pancetta, fresh Burrata", raw_price_text="$34", price=34, canonical_category="pasta", canonical_dish="PESTO", pasta_type="rigatoni", sauce="pesto", protein=["pancetta"], ingredients=["burrata"], confidence=0.96),
             item("Bolognese da Abruzzo", section="Arya's Signature Pasta", raw_description="Handmade tagliatelle pasta prepared with a typical Abruzzese style veal and beef ragout, enriched with pancetta and tomato", raw_price_text="$36", price=36, canonical_category="pasta", canonical_dish="BOLOGNESE", pasta_type="tagliatelle", protein=["veal", "beef", "pancetta"], sauce="bolognese", confidence=0.96),
-            item("Gnocchi con Aragosta", section="Arya's Signature Pasta", raw_description="Handmade potato gnocchi tossed with truffle and fontina cheese fonduta, and the meat of 1¼ pound Maine lobster, tomato lobster broth and asparagus", raw_price_text="$42", price=42, canonical_category="pasta", canonical_dish="GNOCCHI", pasta_type="gnocchi", protein=["lobster"], ingredients=["truffle", "fontina", "lobster", "asparagus"], confidence=0.96),
+            item("Gnocchi con Aragosta", section="Arya's Signature Pasta", raw_description="Handmade potato gnocchi tossed with truffle and fontina cheese fonduta, and the meat of 1¼ pound Maine lobster, tomato lobster broth and asparagus", raw_price_text="$42", price=42, canonical_category="pasta", canonical_dish="GNOCCHI_LOBSTER", pasta_type="gnocchi", protein=["lobster"], ingredients=["truffle", "fontina", "lobster", "asparagus"], confidence=0.96),
             item("Ravioli con Funghi", section="Arya's Signature Pasta", raw_description="Handmade oyster mushroom ravioli, truffled mascarpone, grilled escarole", raw_price_text="$34", price=34, canonical_category="pasta", canonical_dish="RAVIOLI", pasta_type="ravioli", ingredients=["oyster mushroom", "truffled mascarpone", "escarole"], dietary_tags=["vegetarian"], confidence=0.94),
             item("Spaghetti con Vongole", section="Arya's Signature Pasta", raw_description="Locally harvested Cape Cod littleneck clams, garlic, dry white wine, fresh oregano", raw_price_text="$30", price=30, canonical_category="pasta", pasta_type="spaghetti", protein=["clams"], ingredients=["garlic", "white wine", "oregano"], confidence=0.96),
             item("Frutti di Mare Fra Diavolo", section="Arya's Signature Pasta", raw_description="Handmade tagliatelle tossed with local lobster, Cape Cod littleneck clams, scallops, and shrimp finished in a spicy white wine San Marzano tomato broth", raw_price_text="M.P.", market_price=True, canonical_category="pasta", canonical_dish="FRUTTI_DI_MARE", pasta_type="tagliatelle", protein=["lobster", "clams", "scallops", "shrimp"], sauce="fra diavolo", confidence=0.95),
@@ -342,7 +343,7 @@ WAVE2_RESTAURANTS: list[dict[str, Any]] = [
             item("Spanish Octopus, Potatoes, Sweet Baby Peppers", section="Antipasti", raw_price_text="22", price=22, canonical_category="seafood", canonical_dish="OCTOPUS", protein=["octopus"], ingredients=["potato", "peppers"], confidence=0.96),
             item("Burrata, Zucchini, Snap Pea, & Herb Salad", section="Antipasti", raw_description="Toasted pine nuts", raw_price_text="23", price=23, canonical_category="salad", canonical_dish="BURRATA", ingredients=["burrata", "zucchini", "snap peas", "pine nuts"], dietary_tags=["vegetarian"], confidence=0.96),
             item("Bucatini ala Gricia", section="House Made Pasta", raw_description="Leoncini pancetta, black pepper, pecorino pepato", raw_price_text="27", price=27, canonical_category="pasta", pasta_type="bucatini", protein=["pancetta"], ingredients=["pecorino"], confidence=0.96),
-            item("Ricotta Gnocchi, Maine Lobster", section="House Made Pasta", raw_description="Smoked butter, cherry tomato, marjoram", raw_price_text="34", price=34, canonical_category="pasta", canonical_dish="GNOCCHI", pasta_type="gnocchi", protein=["lobster"], ingredients=["smoked butter", "cherry tomato"], confidence=0.96),
+            item("Ricotta Gnocchi, Maine Lobster", section="House Made Pasta", raw_description="Smoked butter, cherry tomato, marjoram", raw_price_text="34", price=34, canonical_category="pasta", canonical_dish="GNOCCHI_LOBSTER", pasta_type="gnocchi", protein=["lobster"], ingredients=["smoked butter", "cherry tomato"], confidence=0.96),
             item("Casarecce, Herb Pesto", section="House Made Pasta", raw_description="Asparagus, pistachio stracciatella", raw_price_text="27", price=27, canonical_category="pasta", canonical_dish="PESTO", pasta_type="casarecce", sauce="pesto", ingredients=["asparagus", "pistachio", "stracciatella"], dietary_tags=["vegetarian"], confidence=0.95),
             item("Paccheri, Veal & Porcini Bolognese", section="House Made Pasta", raw_description="Grana Padano", raw_price_text="29", price=29, canonical_category="pasta", canonical_dish="BOLOGNESE", pasta_type="paccheri", protein=["veal"], ingredients=["porcini", "grana padano"], confidence=0.96),
             item("Tagliolini, Crab", section="House Made Pasta", raw_description="Bomba Pugliese, lemon, fennel pollen", raw_price_text="34", price=34, canonical_category="pasta", pasta_type="tagliolini", protein=["crab"], ingredients=["lemon", "fennel pollen"], confidence=0.96),
@@ -558,3 +559,9 @@ WAVE2_RESTAURANTS: list[dict[str, Any]] = [
         ],
     },
 ]
+
+for _row in WAVE2_RESTAURANTS:
+    _captured = CAPTURED_MENUS.get(_row["restaurant_id"])
+    if _captured:
+        _row["items"] = _captured["items"]
+        _row["extractor_model"] = _captured["extractor_model"]

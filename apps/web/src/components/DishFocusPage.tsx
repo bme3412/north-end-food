@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 
 import { PriceLadder } from "@/components/PriceLadder";
 import { SimilarDishesCarousel } from "@/components/SimilarDishesCarousel";
-import { oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
+import { dishGroupMedian, oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import type { MenuItem, PlaceMatch } from "@/lib/types";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
@@ -56,7 +56,7 @@ export function DishFocusPage({
   const [showTop5, setShowTop5] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const keepEveryItem = group.key.startsWith("kids-cat-");
-  const medianPrice = group.items[0]?.north_end_median_price ?? null;
+  const medianPrice = dishGroupMedian(group);
 
   const pricedItems = useMemo(() => {
     return [...group.items].sort((a, b) => {

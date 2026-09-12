@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupItemsByDish, isKidsItem, organizeDishGroups } from "./dishGroups";
+import { compareVariant, groupItemsByDish, isKidsItem, organizeDishGroups } from "./dishGroups";
 import type { MenuItem } from "./types";
 
 function pizza(id: string, serving: MenuItem["pizza_serving"], price: string): MenuItem {
@@ -117,6 +117,93 @@ describe("organizeDishGroups", () => {
     expect(sections[0].groups[0].restaurantCount).toBe(2);
     expect(sections[1].groups[0].displayName).toBe("Kids Pasta");
     expect(sections[1].groups[0].items).toHaveLength(1);
+  });
+
+  it("does not split adult pomodoro by a generic meat token", () => {
+    const adultA = {
+      ...pizza("adult-a", "whole", "20"),
+      canonical_dish: "POMODORO",
+      canonical_category: "pasta",
+      pizza_serving: null,
+      raw_name: "Penne Pomodoro",
+    };
+    const adultB = {
+      ...pizza("adult-b", "whole", "22"),
+      canonical_dish: "POMODORO",
+      canonical_category: "pasta",
+      pizza_serving: null,
+      raw_name: "Ziti Pomodoro",
+    };
+    const groups = groupItemsByDish([adultA, adultB]);
+    expect(groups.map((group) => group.key)).toEqual(["POMODORO"]);
+    expect(groups[0].useLocalMedian).toBe(false);
+  });
+});
+
+describe("compare variants", () => {
+  function pasta(
+    id: string,
+    dish: string,
+    name: string,
+    extras: Partial<MenuItem> = {},
+  ): MenuItem {
+    return {
+      ...pizza(id, "whole", extras.price ?? "20"),
+      canonical_category: "pasta",
+      canonical_dish: dish,
+      pizza_serving: null,
+      raw_name: name,
+      ...extras,
+    };
+  }
+
+  it("keeps lobster gnocchi out of the sorrentina group", () => {
+    const lobster = pasta("arya", "GNOCCHI", "Gnocchi con Aragosta", {
+      price: "42",
+      protein: ["lobster"],
+      raw_description: "Maine lobster, tomato lobster broth",
+    });
+    const sorrentina = pasta("roccos", "GNOCCHI", "Gnocchi Sorrentina", {
+      price: "19.95",
+      sauce: "plum tomato sauce",
+    });
+    const groups = groupItemsByDish([lobster, sorrentina]);
+    expect(groups.map((group) => group.key).sort()).toEqual([
+      "GNOCCHI::lobster",
+      "GNOCCHI::sorrentina",
+    ]);
+    expect(groups.map((group) => group.displayName).sort()).toEqual([
+      "Gnocchi — Lobster",
+      "Gnocchi — Sorrentina",
+    ]);
+    expect(groups.every((group) => group.useLocalMedian)).toBe(true);
+  });
+
+  it("does not re-split a promoted lobster gnocchi id", () => {
+    const item = pasta("sage", "GNOCCHI_LOBSTER", "Ricotta Gnocchi, Maine Lobster", {
+      protein: ["lobster"],
+    });
+    expect(compareVariant(item)).toBeNull();
+    const groups = groupItemsByDish([item]);
+    expect(groups[0].key).toBe("GNOCCHI_LOBSTER");
+    expect(groups[0].displayName).toBe("Gnocchi Lobster");
+    expect(groups[0].useLocalMedian).toBe(false);
+  });
+
+  it("does not split lobster ravioli by lobster again", () => {
+    const ravioli = pasta("rav", "LOBSTER_RAVIOLI", "Lobster Ravioli", {
+      protein: ["lobster"],
+    });
+    expect(groupItemsByDish([ravioli])[0].key).toBe("LOBSTER_RAVIOLI");
+  });
+
+  it("does not split bolognese by beef", () => {
+    const bolognese = pasta("bolo", "BOLOGNESE", "Tagliatelle Bolognese", {
+      protein: ["beef"],
+      raw_description: "beef ragu",
+    });
+    expect(compareVariant(bolognese)).toBeNull();
+    expect(groupItemsByDish([bolognese])[0].key).toBe("BOLOGNESE");
   });
 
   it("compares kids dishes by category when they do not share a name", () => {

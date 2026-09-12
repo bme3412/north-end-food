@@ -33,7 +33,9 @@ def _hash_items(items: list[dict]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def add_restaurants(db: Session, rows: list[dict], *, skip_existing: bool = False) -> dict[str, int]:
+def add_restaurants(
+    db: Session, rows: list[dict], *, skip_existing: bool = False, menu_only: bool = False
+) -> dict[str, int]:
     """Create Restaurant + MenuSource + MenuSnapshot + MenuItem rows (plus
     derived ingredients/price observations) for each row in `rows`, using
     the same shape as RESTAURANTS entries in seed_data.py.
@@ -44,39 +46,58 @@ def add_restaurants(db: Session, rows: list[dict], *, skip_existing: bool = Fals
     database (dev or production) without needing seed(reset=True)'s full
     wipe-and-recreate, which would also blow away every other
     restaurant's menu history. See migration 015 for that use.
+
+    With menu_only=True, an existing restaurant is reused and a new
+    snapshot is written so a captured menu can replace the live catalog
+    without deleting other venues.
     """
     now = datetime.now(timezone.utc)
     restaurant_count = 0
     item_count = 0
 
     for row in rows:
-        if skip_existing and db.get(Restaurant, row["restaurant_id"]) is not None:
+        existing = db.get(Restaurant, row["restaurant_id"])
+        if skip_existing and existing is not None:
             continue
 
         sources = row["sources"]
         items = row["items"]
         extractor_model = row["extractor_model"]
         rest_payload = {k: v for k, v in row.items() if k not in {"sources", "items", "extractor_model"}}
-        restaurant = Restaurant(**rest_payload, last_verified_at=now)
-        db.add(restaurant)
-        db.flush()
-        restaurant_count += 1
+
+        if menu_only and existing is not None:
+            restaurant = existing
+        else:
+            restaurant = Restaurant(**rest_payload, last_verified_at=now)
+            db.add(restaurant)
+            db.flush()
+            restaurant_count += 1
 
         source_row = sources[0]
-        source = MenuSource(
-            menu_source_id=_stable_uuid(restaurant.restaurant_id, source_row["source_url"]),
-            restaurant_id=restaurant.restaurant_id,
-            menu_type=source_row["menu_type"],
-            source_url=source_row["source_url"],
-            source_format=source_row["source_format"],
-            active=True,
-            last_checked_at=now,
-        )
-        db.add(source)
-        db.flush()
+        source_id = _stable_uuid(restaurant.restaurant_id, source_row["source_url"])
+        source = db.get(MenuSource, source_id)
+        if source is None:
+            source = MenuSource(
+                menu_source_id=source_id,
+                restaurant_id=restaurant.restaurant_id,
+                menu_type=source_row["menu_type"],
+                source_url=source_row["source_url"],
+                source_format=source_row["source_format"],
+                active=True,
+                last_checked_at=now,
+            )
+            db.add(source)
+            db.flush()
+        else:
+            source.last_checked_at = now
+            db.flush()
 
+        snapshot_id = _stable_uuid(restaurant.restaurant_id, "snapshot", _hash_items(items))
+        existing_snap = db.get(MenuSnapshot, snapshot_id)
+        if existing_snap is not None:
+            continue
         snapshot = MenuSnapshot(
-            menu_snapshot_id=_stable_uuid(restaurant.restaurant_id, "snapshot", _hash_items(items)),
+            menu_snapshot_id=snapshot_id,
             restaurant_id=restaurant.restaurant_id,
             menu_source_id=source.menu_source_id,
             retrieved_at=now,
@@ -116,6 +137,17 @@ def add_restaurants(db: Session, rows: list[dict], *, skip_existing: bool = Fals
 
     db.commit()
     return {"restaurants": restaurant_count, "items": item_count}
+
+
+def refresh_restaurant_menus(db: Session, restaurant_ids: list[str] | None = None) -> dict[str, int]:
+    """Write a new manual_seed snapshot for restaurants whose items changed
+    in seed data, without wiping the rest of the catalog.
+    """
+    rows = RESTAURANTS + WAVE2_RESTAURANTS
+    if restaurant_ids is not None:
+        wanted = set(restaurant_ids)
+        rows = [row for row in rows if row["restaurant_id"] in wanted]
+    return add_restaurants(db, rows, skip_existing=False, menu_only=True)
 
 
 def seed(db: Session, *, reset: bool = True) -> dict[str, int]:

@@ -9,7 +9,79 @@ export type DishGroup = {
   minPrice: number | null;
   maxPrice: number | null;
   avgPrice: number | null;
+  useLocalMedian?: boolean;
 };
+
+const SHAPE_DISHES = new Set(["GNOCCHI", "RAVIOLI"]);
+const IMPLIED_PROTEIN = new Set([
+  "LOBSTER_RAVIOLI",
+  "LOBSTER_ROLL",
+  "LOBSTER_TAIL_PASTRY",
+  "FRUTTI_DI_MARE",
+  "CIOPPINO",
+  "SEAFOOD_PASTA",
+  "CALAMARI",
+  "OYSTERS",
+  "OCTOPUS",
+]);
+
+const PROTEIN_FAMILIES: [string, RegExp][] = [
+  ["lobster", /\b(lobster|aragosta|astice)\b/],
+  ["seafood", /\b(shrimp|scallop|mussel|calamari|seafood|salmon|fish)\b/],
+  ["meat", /\b(short rib|sausage|salsiccia|meatball|speck|chicken|veal|beef|pork)\b/],
+];
+const PREP_FAMILIES: [string, RegExp][] = [
+  ["sorrentina", /\bsorrentina\b/],
+  ["vodka", /\b(alla )?vodka\b/],
+  ["cacio", /\bcacio(?: e | de | )?pepe\b/],
+  ["funghi", /\b(funghi|mushroom)\b/],
+];
+const VARIANT_LABELS: Record<string, string> = {
+  lobster: "Lobster",
+  seafood: "Seafood",
+  meat: "Meat",
+  sorrentina: "Sorrentina",
+  vodka: "Vodka",
+  cacio: "Cacio e pepe",
+  funghi: "Mushrooms",
+};
+
+function itemHaystack(item: Pick<MenuItem, "raw_name" | "raw_description" | "sauce" | "protein" | "ingredients">): string {
+  return `${item.raw_name} ${item.raw_description ?? ""} ${item.sauce ?? ""} ${(item.protein ?? []).join(" ")} ${(item.ingredients ?? []).join(" ")}`.toLowerCase();
+}
+
+export function compareVariant(
+  item: Pick<MenuItem, "canonical_dish" | "raw_name" | "raw_description" | "sauce" | "protein" | "ingredients">,
+): string | null {
+  const dish = item.canonical_dish ?? "";
+  const text = itemHaystack(item);
+  const protein = PROTEIN_FAMILIES.find(([, pattern]) => pattern.test(text))?.[0] ?? null;
+  const prep = PREP_FAMILIES.find(([, pattern]) => pattern.test(text))?.[0] ?? null;
+  const implied = IMPLIED_PROTEIN.has(dish) || dish.includes("LOBSTER") || dish.includes("SEAFOOD");
+  if (protein && !implied && (protein !== "meat" || SHAPE_DISHES.has(dish))) {
+    return protein;
+  }
+  if (prep && (SHAPE_DISHES.has(dish) || dish === "GNOCCHI")) {
+    return prep;
+  }
+  return null;
+}
+
+export function dishGroupMedian(group: DishGroup): number | null {
+  if (!group.useLocalMedian) {
+    const seeded = group.items[0]?.north_end_median_price;
+    if (seeded != null && Number.isFinite(Number(seeded)) && Number(seeded) > 0) {
+      return Number(seeded);
+    }
+  }
+  const prices = group.items
+    .map((item) => (item.price != null ? Number(item.price) : null))
+    .filter((price): price is number => price != null)
+    .sort((a, b) => a - b);
+  if (!prices.length) return null;
+  const mid = Math.floor(prices.length / 2);
+  return prices.length % 2 === 1 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+}
 
 export function isKidsItem(item: Pick<MenuItem, "portion" | "menu_section" | "raw_name">): boolean {
   const haystack = `${item.portion ?? ""} ${item.menu_section ?? ""} ${item.raw_name}`.toLowerCase();
@@ -43,7 +115,11 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
   for (const item of items) {
     const servingKey = item.canonical_category === "pizza" ? `::${item.pizza_serving ?? "unknown"}` : "";
     const kidsKey = isKidsItem(item) ? "::kids" : "";
-    const key = item.canonical_dish ? `${item.canonical_dish}${servingKey}${kidsKey}` : `__item_${item.menu_item_id}`;
+    const variant = compareVariant(item);
+    const dish = item.canonical_dish ?? "";
+    const variantAlreadyInId = Boolean(variant && dish.toUpperCase().includes(variant.toUpperCase()));
+    const variantKey = variant && !variantAlreadyInId ? `::${variant}` : "";
+    const key = item.canonical_dish ? `${item.canonical_dish}${servingKey}${kidsKey}${variantKey}` : `__item_${item.menu_item_id}`;
     const list = byKey.get(key);
     if (list) {
       list.push(item);
@@ -61,7 +137,11 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
     const first = ranked[0];
     const servingLabel = pizzaServingLabel(first.pizza_serving);
     const kidsLabel = isKidsItem(first) ? "Kids" : null;
-    const suffix = [servingLabel, kidsLabel].filter(Boolean).join(" · ");
+    const variant = compareVariant(first);
+    const dish = first.canonical_dish ?? "";
+    const variantAlreadyInId = Boolean(variant && dish.toUpperCase().includes(variant.toUpperCase()));
+    const variantLabel = variant && !variantAlreadyInId ? VARIANT_LABELS[variant] ?? variant : null;
+    const suffix = [servingLabel, kidsLabel, variantLabel].filter(Boolean).join(" · ");
     groups.push({
       key,
       displayName: first.canonical_dish
@@ -72,6 +152,7 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
       avgPrice: prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : null,
+      useLocalMedian: Boolean(variant && !variantAlreadyInId),
     });
   }
 

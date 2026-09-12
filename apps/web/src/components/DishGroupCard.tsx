@@ -1,7 +1,7 @@
 import { PriceRangeStrip } from "@/components/PriceRangeStrip";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
 import { formatDollars, formatPrice, prettyCategory } from "@/lib/format";
-import { oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
+import { dishGroupMedian, oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON } from "@/lib/categoryIcons";
 import type { MenuItem } from "@/lib/types";
 
@@ -23,11 +23,11 @@ export function DishGroupCard({
     if (b.price == null) return -1;
     return Number(a.price) - Number(b.price);
   });
-  const preview = ranked.slice(0, PREVIEW_ROWS);
+  const priced = ranked.filter((item) => item.price != null);
+  const preview = priced.slice(0, PREVIEW_ROWS);
   const hidden = ranked.length - preview.length;
   const category = group.items[0]?.canonical_category;
-  const medianPrice =
-    group.items[0]?.north_end_median_price != null ? Number(group.items[0].north_end_median_price) : null;
+  const medianPrice = dishGroupMedian(group);
   const range =
     group.minPrice != null && group.maxPrice != null
       ? group.minPrice === group.maxPrice
