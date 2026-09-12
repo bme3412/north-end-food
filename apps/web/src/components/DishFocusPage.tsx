@@ -82,17 +82,18 @@ function assignQualityBadges(items: MenuItem[]): Map<string, string> {
 
 export function DishFocusPage({
   group,
+  showMap = false,
   onSelectDish,
   onBack,
 }: {
   group: DishGroup;
+  showMap?: boolean;
   onSelectDish: (dishName: string) => void;
   onBack?: () => void;
 }) {
   const [showTop5, setShowTop5] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
-  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
   const qualityBadges = useMemo(() => assignQualityBadges(group.items), [group.items]);
 
@@ -160,22 +161,8 @@ export function DishFocusPage({
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5">
-      <div className="mb-3 grid grid-cols-2 rounded-lg bg-linen-2 p-1 lg:hidden">
-        {(["list", "map"] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => setMobileView(view)}
-            className={`rounded-md py-1.5 text-xs font-semibold capitalize ${
-              mobileView === view ? "bg-card text-ink shadow-sm" : "text-muted"
-            }`}
-          >
-            {view === "list" ? `Dishes (${restaurantItems.length})` : "Map & prices"}
-          </button>
-        ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
-        <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
+      <div className={`grid gap-4 ${showMap ? "lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]" : ""}`}>
+        <div className={`${showMap ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-3`}>
           {onBack ? (
             <button
               type="button"
@@ -235,10 +222,22 @@ export function DishFocusPage({
               );
             })}
           </div>
+          {!showMap ? (
+            <>
+              <PriceDistributionPanel group={group} />
+              {group.items[0]?.canonical_dish ? (
+                <SimilarDishesCarousel
+                  canonicalDish={group.items[0].canonical_dish}
+                  onSelectDish={onSelectDish}
+                />
+              ) : null}
+            </>
+          ) : null}
         </div>
 
-        <div className={`${mobileView === "map" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
-          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line">
+        {showMap ? (
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line lg:h-full lg:min-h-[420px]">
             <MapView
               places={places}
               ranks={ranks}
@@ -277,6 +276,7 @@ export function DishFocusPage({
             />
           ) : null}
         </div>
+        ) : null}
       </div>
     </div>
   );

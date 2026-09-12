@@ -1,5 +1,5 @@
-import { SearchWorkspace } from "@/components/SearchWorkspace";
+import { redirect } from "next/navigation";
 
 export default function MapPage() {
-  return <SearchWorkspace initialMobileTab="map" />;
+  redirect("/search?view=map");
 }

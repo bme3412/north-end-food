@@ -16,7 +16,7 @@ const geist = Geist({
 
 export const metadata: Metadata = {
   title: "North End Food",
-  description: "Map and search every official menu in Boston's North End.",
+  description: "Search every official menu in Boston's North End.",
 };
 
 export const viewport: Viewport = {

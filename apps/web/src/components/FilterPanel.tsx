@@ -2,22 +2,16 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ChevronDown, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
+import { ChevronDown, Map, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
 
 import { SearchBox } from "@/components/SearchBox";
 import { useAsOfTime } from "@/lib/asOfTime";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, FEATURED_CATEGORIES } from "@/lib/categoryIcons";
 import { prettyCategory } from "@/lib/format";
 import type { FilterState } from "@/lib/filters";
-import { DEFAULT_FILTERS } from "@/lib/filters";
+import { applySearchQuery, DEFAULT_FILTERS } from "@/lib/filters";
 import { useServiceMode } from "@/lib/serviceMode";
 import type { FilterMeta } from "@/lib/types";
-
-// Real, clickable examples (each one sets `filters.q`), not decorative
-// text -- picked to showcase the natural-language price/filter parsing
-// (see app/routers/menu_items.py's query parsing) alongside a plain dish
-// and a plain restaurant name search.
-const SUGGESTED_QUERIES = ["lobster ravioli under $35", "pasta open now", "vegetarian", "Neptune Oyster"];
 
 const UNDER_THIRTY = "30";
 
@@ -29,6 +23,9 @@ type FilterPanelProps = {
   expanded: boolean;
   onToggleExpanded: () => void;
   compact?: boolean;
+  mapVisible?: boolean;
+  onToggleMap?: () => void;
+  autoFocusSearch?: boolean;
 };
 
 export function FilterPanel({
@@ -39,6 +36,9 @@ export function FilterPanel({
   expanded,
   onToggleExpanded,
   compact = false,
+  mapVisible = false,
+  onToggleMap,
+  autoFocusSearch = false,
 }: FilterPanelProps) {
   const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onChange({ ...filters, [key]: value });
@@ -67,27 +67,33 @@ export function FilterPanel({
 
   return (
     <div className={`bg-card/95 backdrop-blur-sm ${compact ? "px-4 py-1.5" : "p-4"}`}>
-      <div className={`flex items-center ${compact ? "gap-4" : "flex-wrap gap-3"}`}>
+      <div className="flex items-center gap-2">
         <SearchBox
           value={filters.q}
-          onChange={(query) => set("q", query)}
-          placeholder="Search North End…"
+          onChange={(query) => onChange(applySearchQuery(filters, query))}
+          placeholder="Search dishes, restaurants, or ingredients"
           variant="panel"
           compact={compact}
+          autoFocus={autoFocusSearch}
+          ariaLabel="Search dishes, restaurants, or ingredients"
         />
-        <p className={`min-w-0 items-center gap-2 whitespace-nowrap text-[10px] text-muted ${compact ? "hidden lg:flex" : "flex flex-wrap"}`}>
-          <span className="shrink-0">Try:</span>
-          {SUGGESTED_QUERIES.map((query) => (
-            <button
-              key={query}
-              type="button"
-              onClick={() => set("q", query)}
-              className="text-muted transition-colors hover:text-primary"
-            >
-              &ldquo;{query}&rdquo;
-            </button>
-          ))}
-        </p>
+        {onToggleMap ? (
+          <button
+            type="button"
+            onClick={onToggleMap}
+            aria-pressed={mapVisible}
+            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold ${
+              compact ? "h-10" : "h-12"
+            } ${
+              mapVisible
+                ? "border-ink bg-ink text-linen"
+                : "border-line bg-card text-ink hover:bg-linen"
+            }`}
+          >
+            <Map className="size-3.5" aria-hidden="true" />
+            Map
+          </button>
+        ) : null}
       </div>
 
       <FilterChipRow

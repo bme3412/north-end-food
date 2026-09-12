@@ -83,6 +83,7 @@ export function DiscoverHome() {
                 onChange={setQuery}
                 placeholder="Search dishes, restaurants, or ingredients"
                 variant="hero"
+                starterQueries={["lobster ravioli under $35", "pasta open now", "vegetarian", "Neptune Oyster"]}
                 ariaLabel="Search dishes, restaurants, or ingredients"
               />
               <button type="submit" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">

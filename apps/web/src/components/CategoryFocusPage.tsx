@@ -19,9 +19,8 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 // see SearchWorkspace.tsx's routing comment), this shows every real dish
 // identity in the category and lets picking one hand off to DishFocusPage
 // via onSelectDish, reusing the same callback SimilarDishesCarousel uses.
-// Layout deliberately mirrors DishFocusPage's list+persistent-map split
-// (not a full-width grid) so browsing dish identities never comes at the
-// cost of losing the map -- both stay visible together, same as there.
+// Layout mirrors DishFocusPage: results first, optional map from the
+// shared search toolbar.
 type LoadState =
   | { status: "loading" }
   | { status: "error" }
@@ -36,6 +35,7 @@ export function CategoryFocusPage({
   category,
   places,
   items,
+  showMap = false,
   onSelectDish,
   onOpenItem,
   onBrowseAll,
@@ -43,13 +43,13 @@ export function CategoryFocusPage({
   category: string;
   places: PlaceMatch[];
   items: MenuItem[];
+  showMap?: boolean;
   onSelectDish: (dishName: string) => void;
   onOpenItem: (item: MenuItem) => void;
   onBrowseAll: () => void;
 }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +68,7 @@ export function CategoryFocusPage({
   if (state.status === "loading") {
     return (
       <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+        <div className={`grid gap-4 ${showMap ? "lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]" : ""}`}>
           <div className="flex min-w-0 flex-col gap-3">
             <div className="h-[76px] animate-pulse rounded-xl bg-linen-2" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -77,7 +77,7 @@ export function CategoryFocusPage({
               ))}
             </div>
           </div>
-          <div className="hidden h-[300px] animate-pulse rounded-xl bg-linen-2 lg:block" />
+          {showMap ? <div className="hidden h-[300px] animate-pulse rounded-xl bg-linen-2 lg:block" /> : null}
         </div>
       </div>
     );
@@ -95,23 +95,8 @@ export function CategoryFocusPage({
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5">
-      <div className="mb-3 grid grid-cols-2 rounded-lg bg-linen-2 p-1 lg:hidden">
-        {(["list", "map"] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => setMobileView(view)}
-            className={`rounded-md py-1.5 text-xs font-semibold capitalize ${
-              mobileView === view ? "bg-card text-ink shadow-sm" : "text-muted"
-            }`}
-          >
-            {view === "list" ? `Dishes (${summary.dishes.length})` : "Map"}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
-        <div className={`${mobileView === "list" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
+      <div className={`grid gap-4 ${showMap ? "lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]" : ""}`}>
+        <div className={`${showMap ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-3`}>
           <section className="rounded-xl border border-line bg-card p-3 shadow-[0_1px_4px_rgba(23,27,32,0.05)]">
             <h1 className="text-[17px] font-bold capitalize leading-tight tracking-[-0.02em] text-ink">
               {prettyCategory(summary.category)}
@@ -189,17 +174,19 @@ export function CategoryFocusPage({
           ) : null}
         </div>
 
-        <div className={`${mobileView === "map" ? "flex" : "hidden"} min-w-0 flex-col gap-3 lg:flex`}>
-          <div className="relative h-[300px] overflow-hidden rounded-xl border border-line lg:h-full lg:min-h-[420px]">
-            <MapView
-              places={places}
-              selectedId={selectedId}
-              selectedItems={items}
-              onSelect={(place) => setSelectedId(place?.restaurant_id ?? null)}
-              onOpenItem={onOpenItem}
-            />
+        {showMap ? (
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="relative h-[300px] overflow-hidden rounded-xl border border-line lg:h-full lg:min-h-[420px]">
+              <MapView
+                places={places}
+                selectedId={selectedId}
+                selectedItems={items}
+                onSelect={(place) => setSelectedId(place?.restaurant_id ?? null)}
+                onOpenItem={onOpenItem}
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

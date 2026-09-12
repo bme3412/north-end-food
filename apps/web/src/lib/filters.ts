@@ -87,6 +87,36 @@ export function filtersToParams(filters: FilterState): Record<string, string | u
   };
 }
 
+/** A new typed query is a new search. Drop browse scope (category, pizza
+ * format, pinned restaurant) so Alfredo is not ANDed with leftover pizza. */
+export function applySearchQuery(filters: FilterState, query: string): FilterState {
+  const next = query.trim();
+  const prev = filters.q.trim();
+  if (!next || next === prev) {
+    return { ...filters, q: query };
+  }
+  return {
+    ...filters,
+    q: query,
+    categories: [],
+    subcategories: [],
+    pizzaServing: "",
+    restaurantId: "",
+  };
+}
+
+/** Picking a category tile starts browse, not a filter on the last query. */
+export function applyCategoryBrowse(filters: FilterState, category: string): FilterState {
+  return {
+    ...filters,
+    q: "",
+    categories: [category],
+    subcategories: [],
+    pizzaServing: "",
+    restaurantId: "",
+  };
+}
+
 export function activeFilterCount(filters: FilterState): number {
   let count = 0;
   if (filters.q.trim()) count += 1;

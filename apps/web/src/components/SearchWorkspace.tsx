@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Store, Utensils } from "lucide-react";
 import type { ReactNode } from "react";
@@ -12,12 +13,14 @@ import { FilterPanel } from "@/components/FilterPanel";
 import { ItemCard } from "@/components/ItemCard";
 import { ItemSheet } from "@/components/ItemSheet";
 import { RestaurantRow } from "@/components/RestaurantRow";
+import { SearchBrowse } from "@/components/SearchBrowse";
 import { getFilterMeta, listMenuItems } from "@/lib/api";
 import { asOfTimeToParams, useAsOfTime } from "@/lib/asOfTime";
-import { groupItemsByDish } from "@/lib/dishGroups";
+import { groupItemsByDish, organizeDishGroups } from "@/lib/dishGroups";
 import {
   activeFilterCount,
-  DEFAULT_FILTERS,
+  applyCategoryBrowse,
+  applySearchQuery,
   filtersFromSearchParams,
   filtersToParams,
   filtersToSearchParams,
@@ -35,10 +38,13 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   loading: () => <div className="h-full min-h-[280px] animate-pulse bg-linen-2" />,
 });
 
-export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTab?: "map" | "list" }) {
+export function SearchWorkspace() {
+  const searchParams = useSearchParams();
   const { asOf, openNowEnabled } = useAsOfTime();
   const { mode: serviceMode } = useServiceMode();
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<FilterState>(() =>
+    filtersFromSearchParams(new URLSearchParams(searchParams.toString())),
+  );
   const [restaurantSort, setRestaurantSort] = useState<RestaurantSort>("matched");
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -53,17 +59,21 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [groupByDish, setGroupByDish] = useState(true);
   const [comparison, setComparison] = useState<{ context: string; groupKey: string } | null>(null);
-  const [mobileTab, setMobileTab] = useState<"map" | "list">(initialMobileTab);
-  const [loading, setLoading] = useState(true);
+  const [showMap, setShowMap] = useState(() => searchParams.get("view") === "map");
+  const [loading, setLoading] = useState(() => activeFilterCount(filtersFromSearchParams(new URLSearchParams(searchParams.toString()))) > 0);
   const [error, setError] = useState<string | null>(null);
   const urlReady = useRef(false);
+  const routeIntent = useRef({ q: "", categories: "" });
+  const filterCount = activeFilterCount(filters);
+  const hasActiveSearch = filterCount > 0;
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
-      setFilters(filtersFromSearchParams(params));
-      const requestedView = params.get("view");
-      if (requestedView === "map" || requestedView === "list") setMobileTab(requestedView);
+      const parsed = filtersFromSearchParams(params);
+      setFilters(parsed);
+      setShowMap(params.get("view") === "map");
+      routeIntent.current = { q: parsed.q.trim(), categories: parsed.categories.join(",") };
       urlReady.current = true;
     }, 0);
     return () => window.clearTimeout(handle);
@@ -71,16 +81,29 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
 
   useEffect(() => {
     if (!urlReady.current) return;
-    const params = filtersToSearchParams(filters, mobileTab);
-    const query = params.toString();
-    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
-  }, [filters, mobileTab]);
+    const params = filtersToSearchParams(filters, showMap ? "map" : "list");
+    const next = `/search${params.toString() ? `?${params.toString()}` : ""}`;
+    const nextQ = filters.q.trim();
+    const nextCategories = filters.categories.join(",");
+    const prevQ = routeIntent.current.q;
+    const prevCategories = routeIntent.current.categories;
+    const swappedIntent =
+      (Boolean(prevCategories) && Boolean(nextQ) && nextCategories !== prevCategories) ||
+      (Boolean(prevQ) && Boolean(nextCategories) && nextQ !== prevQ);
+    routeIntent.current = { q: nextQ, categories: nextCategories };
+    if (swappedIntent) {
+      window.history.pushState(null, "", next);
+    } else {
+      window.history.replaceState(null, "", next);
+    }
+  }, [filters, showMap]);
 
   useEffect(() => {
     getFilterMeta().then(setMeta).catch(() => undefined);
   }, []);
 
   useEffect(() => {
+    if (!hasActiveSearch) return;
     const controller = new AbortController();
     const handle = window.setTimeout(() => {
       setLoading(true);
@@ -112,7 +135,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
       window.clearTimeout(handle);
       controller.abort();
     };
-  }, [filters, asOf, openNowEnabled, serviceMode]);
+  }, [filters, hasActiveSearch, asOf, openNowEnabled, serviceMode]);
 
   function selectPlace(id: string | null) {
     setSelectedPlaceId(id);
@@ -126,9 +149,8 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
     return items.filter((item) => item.restaurant_id === selectedPlaceId);
   }, [items, selectedPlaceId]);
 
-  const filterCount = activeFilterCount(filters);
-  const hasActiveSearch = filters.q.trim() !== "" || filterCount > 0;
   const grouped = useMemo(() => groupItemsByDish(visibleItems), [visibleItems]);
+  const dishSections = useMemo(() => organizeDishGroups(grouped), [grouped]);
   const compareContext = `${filters.q}|${filters.pizzaServing}|${filters.restaurantId}`;
   const compareGroupKey = comparison?.context === compareContext ? comparison.groupKey : null;
 
@@ -159,6 +181,10 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
   );
 
   const showDishGroups = searchView.kind === "restaurant" ? false : groupByDish;
+  const filterPanelMap = {
+    mapVisible: showMap,
+    onToggleMap: () => setShowMap((open) => !open),
+  };
 
   const categoryFocus = searchView.kind === "category" ? searchView.category : null;
   const focusGroup =
@@ -197,6 +223,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
             expanded={filtersExpanded}
             onToggleExpanded={() => setFiltersExpanded((open) => !open)}
             compact
+            {...filterPanelMap}
           />
         </div>
         {error ? (
@@ -209,9 +236,10 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
             category={categoryFocus}
             places={places}
             items={visibleItems}
-            onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+            showMap={showMap}
+            onSelectDish={(dishName) => setFilters((current) => applySearchQuery(current, dishName))}
             onOpenItem={setSelectedItem}
-            onBrowseAll={() => setFilters((current) => ({ ...current, q: "", categories: [categoryFocus] }))}
+            onBrowseAll={() => setFilters((current) => applyCategoryBrowse(current, categoryFocus))}
           />
         )}
         <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
@@ -231,6 +259,7 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
             expanded={filtersExpanded}
             onToggleExpanded={() => setFiltersExpanded((open) => !open)}
             compact
+            {...filterPanelMap}
           />
         </div>
         {error ? (
@@ -240,7 +269,8 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
         ) : (
           <DishFocusPage
             group={focusGroup}
-            onSelectDish={(dishName) => setFilters((current) => ({ ...current, q: dishName }))}
+            showMap={showMap}
+            onSelectDish={(dishName) => setFilters((current) => applySearchQuery(current, dishName))}
             onBack={compareGroupKey ? () => setComparison(null) : undefined}
           />
         )}
@@ -267,16 +297,29 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           expanded={filtersExpanded}
           onToggleExpanded={() => setFiltersExpanded((open) => !open)}
           compact
+          autoFocusSearch
+          {...filterPanelMap}
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[clamp(480px,42vw,620px)_1fr]">
-        {/* Sidebar: results */}
+      <div
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+          showMap ? "lg:grid lg:grid-cols-[clamp(420px,40vw,560px)_1fr]" : ""
+        }`}
+      >
         <aside
-          className={`min-h-0 flex-col overflow-y-auto bg-linen pb-14 lg:pb-0 lg:border-r lg:border-line ${
-            mobileTab === "list" ? "flex flex-1" : "hidden lg:flex"
+          className={`min-h-0 flex-col overflow-y-auto bg-linen ${
+            showMap ? "hidden lg:flex lg:border-r lg:border-line" : "flex flex-1"
           }`}
         >
+        {!hasActiveSearch ? (
+          <SearchBrowse
+            meta={meta}
+            onSelectCategory={(category) => setFilters((current) => applyCategoryBrowse(current, category))}
+            onSelectDish={(query) => setFilters((current) => applySearchQuery(current, query))}
+          />
+        ) : (
+          <>
         <div className="flex flex-col gap-3 border-t border-b border-line px-5 py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex w-fit gap-1 rounded-full bg-linen-2 p-1">
@@ -329,42 +372,68 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
           ) : null}
         </div>
 
-        <div className="p-5">
+        <div className={`p-5 ${showMap ? "" : "mx-auto w-full max-w-7xl"}`}>
           {error ? (
             <p className="rounded-2xl bg-tomato-soft px-4 py-3 text-sm">Can’t reach the API. {error}</p>
           ) : (
             <div className="flex flex-col gap-4">
               <SectionHeader
                 icon={showDishGroups ? <Utensils className="size-4" /> : <Store className="size-4" />}
-                label={
-                  showDishGroups
-                    ? hasActiveSearch
-                      ? "Matched Dishes"
-                      : "All Dishes"
-                    : hasActiveSearch
-                      ? "Matched Restaurants"
-                      : "All Restaurants"
-                }
+                label={showDishGroups ? "Matched Dishes" : "Matched Restaurants"}
               />
               {showDishGroups ? (
                 <>
-                  {grouped.map((group) =>
-                    group.restaurantCount >= 2 ? (
-                      <DishGroupCard
-                        key={group.key}
-                        group={group}
-                        onOpen={setSelectedItem}
-                        onCompare={() => setComparison({ context: compareContext, groupKey: group.key })}
-                      />
-                    ) : (
-                      <ItemCard
-                        key={group.items[0].menu_item_id}
-                        item={group.items[0]}
-                        onOpen={setSelectedItem}
-                        compact
-                      />
-                    ),
-                  )}
+                  {dishSections.map((section) => {
+                    const compare = section.key === "compare" || section.key === "kids";
+                    return (
+                      <section key={section.key} className="flex flex-col gap-3">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-bold text-ink">{section.title}</h3>
+                            {section.key === "kids" ? (
+                              <p className="mt-0.5 text-xs text-muted">
+                                Kids portions stay out of adult price comparisons.
+                              </p>
+                            ) : section.key === "compare" ? (
+                              <p className="mt-0.5 text-xs text-muted">
+                                Same dish, sorted cheapest to most expensive.
+                              </p>
+                            ) : null}
+                          </div>
+                          <span className="text-xs text-muted">
+                            {section.groups.length} {section.groups.length === 1 ? "dish" : "dishes"}
+                          </span>
+                        </div>
+                        <div
+                          className={
+                            showMap
+                              ? "flex flex-col gap-3"
+                              : compare
+                                ? "grid gap-3 md:grid-cols-2"
+                                : "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                          }
+                        >
+                          {section.groups.map((group) =>
+                            group.restaurantCount >= 2 ? (
+                              <DishGroupCard
+                                key={group.key}
+                                group={group}
+                                onOpen={setSelectedItem}
+                                onCompare={() => setComparison({ context: compareContext, groupKey: group.key })}
+                              />
+                            ) : (
+                              <ItemCard
+                                key={group.items[0].menu_item_id}
+                                item={group.items[0]}
+                                onOpen={setSelectedItem}
+                                compact
+                              />
+                            ),
+                          )}
+                        </div>
+                      </section>
+                    );
+                  })}
                   {!loading && visibleItems.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
                       No dishes matched. Widen the search or clear filters.
@@ -373,9 +442,11 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
                 </>
               ) : (
                 <>
+                  <div className={showMap ? "flex flex-col gap-4" : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
                   {sortedPlaces.map((place) => (
                     <RestaurantRow key={place.restaurant_id} place={place} />
                   ))}
+                  </div>
                   {!loading && places.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
                       No restaurants matched. Widen the search or clear filters.
@@ -386,35 +457,24 @@ export function SearchWorkspace({ initialMobileTab = "list" }: { initialMobileTa
             </div>
           )}
         </div>
+          </>
+        )}
         </aside>
 
-        {/* Map column */}
-        <section
-          className={`relative min-h-0 bg-linen-2 lg:h-full ${
-            mobileTab === "map" ? "flex flex-1 flex-col" : "hidden lg:flex"
-          }`}
-        >
-          <div className="relative min-h-[42vh] flex-1 lg:min-h-0">
-            <MapView
-              places={places}
-              selectedId={selectedPlaceId}
-              selectedItems={visibleItems}
-              onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
-              onOpenItem={setSelectedItem}
-            />
-          </div>
-        </section>
+        {showMap ? (
+          <section className="relative min-h-0 flex-1 bg-linen-2 lg:h-full">
+            <div className="absolute inset-0">
+              <MapView
+                places={places}
+                selectedId={selectedPlaceId}
+                selectedItems={visibleItems}
+                onSelect={(place) => selectPlace(place?.restaurant_id ?? null)}
+                onOpenItem={setSelectedItem}
+              />
+            </div>
+          </section>
+        ) : null}
       </div>
-
-      {/* Mobile tab bar */}
-      <nav className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-20 flex border-t border-line bg-card/95 backdrop-blur-md md:bottom-0 lg:hidden">
-        <MobileTab active={mobileTab === "map"} onClick={() => setMobileTab("map")} label="Map" />
-        <MobileTab
-          active={mobileTab === "list"}
-          onClick={() => setMobileTab("list")}
-          label={`Dishes${visibleItems.length ? ` (${visibleItems.length})` : ""}`}
-        />
-      </nav>
 
       <ItemSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
     </div>
@@ -452,24 +512,3 @@ function ViewModeButton({
   );
 }
 
-function MobileTab({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 py-3 text-sm font-bold ${
-        active ? "bg-linen text-ink" : "text-muted"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}

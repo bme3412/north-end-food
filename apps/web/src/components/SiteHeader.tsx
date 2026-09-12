@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Compass, Map, Search, Store, Utensils, type LucideIcon } from "lucide-react";
+import { Bookmark, Compass, Search, Store, Utensils, type LucideIcon } from "lucide-react";
 
 import { TimePreviewControl } from "@/components/TimePreviewControl";
 import { useAsOfTime } from "@/lib/asOfTime";
@@ -27,14 +27,13 @@ export function SiteHeader() {
 
         <nav aria-label="Primary navigation" className="hidden h-full items-center gap-1 md:flex">
           <HeaderTab href="/" icon={Compass} label="Discover" active={pathname === "/"} />
-          <HeaderTab href="/search" icon={Search} label="Search" active={pathname === "/search"} />
+          <HeaderTab href="/search" icon={Search} label="Search" active={pathname === "/search" || pathname === "/map"} />
           <HeaderTab
             href="/restaurants"
             icon={Store}
             label="Restaurants"
             active={pathname?.startsWith("/restaurants") ?? false}
           />
-          <HeaderTab href="/map" icon={Map} label="Map" active={pathname === "/map"} />
           <HeaderTab href="/saved" icon={Bookmark} label="Saved" active={pathname === "/saved"} />
         </nav>
 
