@@ -1,0 +1,50 @@
+name: Refresh enrichment
+
+on:
+  schedule:
+    - cron: "20 11 * * *"
+    - cron: "20 12 * * 1"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which refresh to run
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - place_stats
+          - busyness
+
+jobs:
+  place_stats:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '20 11 * * *')
+      || (github.event_name == 'workflow_dispatch' && (inputs.job == 'both' || inputs.job == 'place_stats'))
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e "apps/api[dev]"
+      - run: python scripts/refresh_place_stats.py
+
+  busyness:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '20 12 * * 1')
+      || (github.event_name == 'workflow_dispatch' && (inputs.job == 'both' || inputs.job == 'busyness'))
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e "apps/api[dev]"
+      - run: python scripts/refresh_busyness.py
