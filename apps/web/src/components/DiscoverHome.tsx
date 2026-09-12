@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, Search, Sparkles, TrendingDown } from "lucide-react";
+import { ArrowRight, Clock3, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -17,7 +17,6 @@ export function DiscoverHome() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [classics, setClassics] = useState<MenuItem[]>([]);
-  const [bestValue, setBestValue] = useState<MenuItem[]>([]);
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [meta, setMeta] = useState<FilterMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,14 +30,12 @@ export function DiscoverHome() {
     ])
       .then(([featured, places, filterMeta]) => {
         setClassics(featured.classics);
-        setBestValue(featured.best_value);
         setRestaurants(places);
         setMeta(filterMeta);
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError") {
           setClassics([]);
-          setBestValue([]);
         }
       })
       .finally(() => {
@@ -120,10 +117,6 @@ export function DiscoverHome() {
 
       <Section title="North End classics" eyebrow="Start with a neighborhood favorite">
         <DishRail items={classics} loading={loading} />
-      </Section>
-
-      <Section title="Best value pasta & plates" eyebrow="Priced below the neighborhood median" icon={<TrendingDown className="size-4" />}>
-        <DishRail items={bestValue} loading={loading} />
       </Section>
 
       <Section title="Open now" eyebrow="Restaurant photos show the venue" icon={<Clock3 className="size-4" />}>
