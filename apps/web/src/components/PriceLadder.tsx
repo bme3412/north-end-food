@@ -1,3 +1,6 @@
+"use client";
+
+import { TakeoutBadges, TakeoutPriceBlock, TakeoutSecondaryPrice } from "@/components/TakeoutMeta";
 import { formatDollars, formatPrice } from "@/lib/format";
 import {
   divergingAxisMax,
@@ -5,6 +8,8 @@ import {
   joinRestaurantNames,
   pctVsMedian,
 } from "@/lib/priceScale";
+import { isTakeoutMode, useServiceMode } from "@/lib/serviceMode";
+import { takeoutSuitability } from "@/lib/takeoutTraits";
 import type { MenuItem } from "@/lib/types";
 
 const AT_MEDIAN = 0.5;
@@ -20,13 +25,10 @@ export function PriceLadder({
   medianPrice: number | string | null;
   onOpen: (item: MenuItem) => void;
 }) {
+  const { mode } = useServiceMode();
+  const takeout = isTakeoutMode(mode);
   const median = resolveMedian(items, medianPrice);
-  const ranked = [...items].sort((a, b) => {
-    if (a.price == null && b.price == null) return a.restaurant_name.localeCompare(b.restaurant_name);
-    if (a.price == null) return 1;
-    if (b.price == null) return -1;
-    return Number(a.price) - Number(b.price);
-  });
+  const ranked = [...items].sort((a, b) => compareLadderItems(a, b, takeout));
   const priced = ranked.filter((item) => item.price != null);
   const unpriced = ranked.filter((item) => item.price == null);
   const pcts = priced
@@ -40,14 +42,20 @@ export function PriceLadder({
         <div className="min-w-0">
           <h2 className="text-[15px] font-bold leading-snug text-ink">{displayName}</h2>
           <p className="mt-0.5 text-[12px] text-muted">
-            {median != null ? `vs North End median of ${formatDollars(median)}` : "Prices across the North End"}
+            {takeout
+              ? mode === "delivery"
+                ? "Typical app checkout — not a live DoorDash quote. Menu price stays visible."
+                : "Pickup total is menu plus ~7% Boston meals tax. On an app, typically 20–35% more."
+              : median != null
+                ? `vs North End median of ${formatDollars(median)}`
+                : "Prices across the North End"}
           </p>
         </div>
         <p className="shrink-0 text-[12px] text-muted">{priced.length} priced</p>
       </header>
 
-      <div className="mt-4 flex flex-col gap-2.5">
-        <div className="grid grid-cols-[minmax(5.25rem,8.5rem)_minmax(0,1fr)_minmax(5.25rem,7rem)] items-center gap-x-2 sm:gap-x-3">
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="grid grid-cols-[minmax(5.25rem,8.5rem)_minmax(0,1fr)_minmax(5.75rem,7.5rem)] items-center gap-x-2 sm:gap-x-3">
           <span />
           <div className="flex justify-between text-[10px] text-muted">
             <span>−{axisMax}%</span>
@@ -67,28 +75,42 @@ export function PriceLadder({
               key={item.menu_item_id}
               type="button"
               onClick={() => onOpen(item)}
-              className="grid w-full grid-cols-[minmax(5.25rem,8.5rem)_minmax(0,1fr)_minmax(5.25rem,7rem)] items-center gap-x-2 text-left sm:gap-x-3"
+              className="w-full text-left"
             >
-              <span className="truncate text-[13px] font-medium text-ink">{item.restaurant_name}</span>
-              <span className="relative h-2.5">
-                <span className="absolute inset-y-[-6px] left-1/2 w-px -translate-x-1/2 bg-line" />
-                {atMedian ? (
-                  <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted" />
-                ) : (
-                  <span
-                    className={`absolute top-0 h-2.5 rounded-full ${cheaper ? "bg-basil" : "bg-tomato"}`}
-                    style={cheaper ? { right: "50%", width: `${width}%` } : { left: "50%", width: `${width}%` }}
-                  />
-                )}
+              <span className="grid grid-cols-[minmax(5.25rem,8.5rem)_minmax(0,1fr)_minmax(5.75rem,7.5rem)] items-center gap-x-2 sm:gap-x-3">
+                <span className="truncate text-[13px] font-medium text-ink">{item.restaurant_name}</span>
+                <span className="relative h-2.5">
+                  <span className="absolute inset-y-[-6px] left-1/2 w-px -translate-x-1/2 bg-line" />
+                  {atMedian ? (
+                    <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted" />
+                  ) : (
+                    <span
+                      className={`absolute top-0 h-2.5 rounded-full ${cheaper ? "bg-basil" : "bg-tomato"}`}
+                      style={cheaper ? { right: "50%", width: `${width}%` } : { left: "50%", width: `${width}%` }}
+                    />
+                  )}
+                </span>
+                <span className="text-[12px] tabular-nums text-ink">
+                  {takeout ? (
+                    <TakeoutPriceBlock item={item} mode={mode} />
+                  ) : (
+                    <>
+                      <span className="font-semibold">{formatPrice(item)}</span>
+                      {pct != null ? (
+                        <span className={`ml-1 ${atMedian ? "text-muted" : cheaper ? "text-basil" : "text-tomato"}`}>
+                          {atMedian ? "at median" : `${pct < 0 ? "−" : "+"}${Math.round(Math.abs(pct))}%`}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </span>
               </span>
-              <span className="text-right text-[12px] tabular-nums text-ink">
-                <span className="font-semibold">{formatPrice(item)}</span>
-                {pct != null ? (
-                  <span className={`ml-1 ${atMedian ? "text-muted" : cheaper ? "text-basil" : "text-tomato"}`}>
-                    {atMedian ? "at median" : `${pct < 0 ? "−" : "+"}${Math.round(Math.abs(pct))}%`}
-                  </span>
-                ) : null}
-              </span>
+              {takeout ? (
+                <span className="mt-1 block">
+                  <TakeoutSecondaryPrice item={item} mode={mode} />
+                  <TakeoutBadges item={item} compact />
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -102,6 +124,24 @@ export function PriceLadder({
       ) : null}
     </section>
   );
+}
+
+function compareLadderItems(a: MenuItem, b: MenuItem, takeout: boolean): number {
+  if (takeout) {
+    const travel = suitabilityRank(a) - suitabilityRank(b);
+    if (travel !== 0) return travel;
+  }
+  if (a.price == null && b.price == null) return a.restaurant_name.localeCompare(b.restaurant_name);
+  if (a.price == null) return 1;
+  if (b.price == null) return -1;
+  return Number(a.price) - Number(b.price);
+}
+
+function suitabilityRank(item: MenuItem): number {
+  const suitability = takeoutSuitability(item);
+  if (suitability === "good") return 0;
+  if (suitability === "ok") return 1;
+  return 2;
 }
 
 function resolveMedian(items: MenuItem[], medianPrice: number | string | null): number | null {

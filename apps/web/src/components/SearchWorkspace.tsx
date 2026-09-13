@@ -281,7 +281,6 @@ export function SearchWorkspace() {
           <DishFocusPage
             group={focusGroup}
             showMap={showMap}
-            onSelectDish={(dishName) => setFilters((current) => applySearchQuery(current, dishName))}
             onBack={compareGroupKey ? () => setComparison(null) : undefined}
             onOpen={setSelectedItem}
           />
@@ -309,7 +308,7 @@ export function SearchWorkspace() {
           expanded={filtersExpanded}
           onToggleExpanded={() => setFiltersExpanded((open) => !open)}
           compact
-          autoFocusSearch
+          autoFocusSearch={!filters.q.trim()}
           {...filterPanelMap}
         />
       </div>

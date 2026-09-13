@@ -44,13 +44,15 @@ export function SearchBox({
   const pathname = usePathname();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [suggestions, setSuggestions] = useState<SearchSuggestions>(EMPTY);
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const query = value.trim();
   const queryEligible = query.length >= 2;
   const visibleSuggestions = queryEligible ? suggestions : EMPTY;
-  const showStarters = open && !queryEligible && starterQueries.length > 0;
+  const showStarters = open && focused && !queryEligible && starterQueries.length > 0;
 
   const items = useMemo<FlatItem[]>(() => {
     if (showStarters) {
@@ -68,19 +70,23 @@ export function SearchBox({
   }, [query, queryEligible, showStarters, starterQueries, visibleSuggestions]);
 
   useEffect(() => {
-    if (!queryEligible) return;
+    if (!queryEligible || !focused) return;
     const controller = new AbortController();
     const handle = window.setTimeout(() => {
       suggestSearch(query, controller.signal)
         .then((data) => {
           setSuggestions(data);
-          setOpen(true);
+          if (inputRef.current === document.activeElement) {
+            setOpen(true);
+          }
           setHighlight(-1);
         })
         .catch((error: Error) => {
           if (error.name !== "AbortError") {
             setSuggestions(EMPTY);
-            setOpen(true);
+            if (inputRef.current === document.activeElement) {
+              setOpen(true);
+            }
             setHighlight(-1);
           }
         });
@@ -89,7 +95,7 @@ export function SearchBox({
       window.clearTimeout(handle);
       controller.abort();
     };
-  }, [query, queryEligible]);
+  }, [query, queryEligible, focused]);
 
   useEffect(() => {
     function handlePointer(event: MouseEvent) {
@@ -110,9 +116,15 @@ export function SearchBox({
     }
   }
 
-  function selectItem(item: FlatItem) {
+  function closeSuggestions() {
     setOpen(false);
     setHighlight(-1);
+    setFocused(false);
+    inputRef.current?.blur();
+  }
+
+  function selectItem(item: FlatItem) {
+    closeSuggestions();
     if (item.kind === "restaurant") {
       router.push(`/restaurants/${item.restaurant.restaurant_id}`);
       return;
@@ -125,8 +137,7 @@ export function SearchBox({
   }
 
   function submitCurrent() {
-    setOpen(false);
-    setHighlight(-1);
+    closeSuggestions();
     applyQuery(query);
   }
 
@@ -169,6 +180,7 @@ export function SearchBox({
         </span>
       ) : null}
       <input
+        ref={inputRef}
         value={value}
         autoFocus={autoFocus}
         onChange={(event) => {
@@ -180,7 +192,10 @@ export function SearchBox({
           onChange(nextValue);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setFocused(true);
+          setOpen(true);
+        }}
         onKeyDown={onKeyDown}
         inputMode="search"
         autoComplete="off"

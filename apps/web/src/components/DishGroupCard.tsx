@@ -1,8 +1,12 @@
+"use client";
+
 import { PriceRangeStrip } from "@/components/PriceRangeStrip";
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { TakeoutPriceBlock } from "@/components/TakeoutMeta";
 import { formatDollars, formatPrice, prettyCategory } from "@/lib/format";
 import { dishGroupMedian, oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import { CATEGORY_ICONS, DEFAULT_CATEGORY_ICON } from "@/lib/categoryIcons";
+import { isTakeoutMode, useServiceMode } from "@/lib/serviceMode";
 import type { MenuItem } from "@/lib/types";
 
 const PREVIEW_ROWS = 5;
@@ -16,6 +20,8 @@ export function DishGroupCard({
   onOpen: (item: MenuItem) => void;
   onCompare?: () => void;
 }) {
+  const { mode } = useServiceMode();
+  const takeout = isTakeoutMode(mode);
   const comparable = group.key.startsWith("kids-cat-") ? group.items : oneItemPerRestaurant(group.items);
   const ranked = [...comparable].sort((a, b) => {
     if (a.price == null && b.price == null) return a.restaurant_name.localeCompare(b.restaurant_name);
@@ -83,7 +89,7 @@ export function DishGroupCard({
                 </span>
                 <span className="shrink-0 text-right">
                   <span className={`block text-[13px] font-bold tabular-nums ${cheapest ? "text-basil" : "text-ink"}`}>
-                    {formatPrice(item)}
+                    {takeout ? <TakeoutPriceBlock item={item} mode={mode} /> : formatPrice(item)}
                   </span>
                   {priced ? (
                     <span className={`block text-[10px] tabular-nums ${pct < 0 ? "text-basil" : "text-tomato"}`}>

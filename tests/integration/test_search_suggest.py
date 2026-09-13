@@ -48,6 +48,12 @@ def test_resolve_search_intent_dish_not_restaurant(db_session):
     assert intent.restaurant_id is None
 
 
+def test_resolve_search_intent_strips_pizza_serving_prefix(db_session):
+    intent = resolve_search_intent(db_session, "whole cheese pizza")
+    assert intent.dish == "CHEESE_PIZZA"
+    assert intent.restaurant_id is None
+
+
 def test_resolve_search_intent_ignores_qualified_category_query(db_session):
     intent = resolve_search_intent(db_session, "pasta under $25")
     assert intent.category is None

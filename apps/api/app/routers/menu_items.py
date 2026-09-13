@@ -2,7 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -12,6 +12,7 @@ from app.queries import (
     DishCategoryMedians,
     _median,
     category_summary,
+    compare_family,
     dish_and_category_medians,
     dish_match_clause,
     ingredient_match_clause,
@@ -107,6 +108,8 @@ def _to_out(
         takeout=place_stats.takeout if place_stats else None,
         dine_in=place_stats.dine_in if place_stats else None,
         delivery=place_stats.delivery if place_stats else None,
+        official_website=restaurant.official_website,
+        busyness_percent=restaurant.busyness_stats.busyness_percent if restaurant.busyness_stats else None,
         menu_snapshot_id=item.menu_snapshot_id,
         retrieved_at=snapshot.retrieved_at,
         source_url=source.source_url,
@@ -162,10 +165,17 @@ def _apply_filters(
     at_day: int | None = None,
     at_time: str | None = None,
     at_until: str | None = None,
+    family_dishes: tuple[str, ...] = (),
     db: Session | None = None,
 ) -> Select:
-    for token in parsed_tokens:
-        stmt = stmt.where(_token_clause(token))
+    token_clauses = [_token_clause(token) for token in parsed_tokens]
+    if token_clauses and family_dishes:
+        stmt = stmt.where(or_(and_(*token_clauses), MenuItem.canonical_dish.in_(family_dishes)))
+    elif token_clauses:
+        for clause in token_clauses:
+            stmt = stmt.where(clause)
+    elif family_dishes:
+        stmt = stmt.where(MenuItem.canonical_dish.in_(family_dishes))
 
     categories = _split(category)
     if categories:
@@ -222,7 +232,12 @@ def _apply_filters(
         stmt = stmt.where(MenuItem.restaurant_id.in_(matching_ids or [""]))
 
     if service_mode is not None:
-        flag = RestaurantPlaceStats.takeout if service_mode == "takeout" else RestaurantPlaceStats.dine_in
+        flag = {
+            "dine_in": RestaurantPlaceStats.dine_in,
+            "takeout": RestaurantPlaceStats.takeout,
+            "pickup": RestaurantPlaceStats.takeout,
+            "delivery": RestaurantPlaceStats.delivery,
+        }[service_mode]
         stmt = stmt.outerjoin(
             RestaurantPlaceStats,
             RestaurantPlaceStats.restaurant_id == Restaurant.restaurant_id,
@@ -459,8 +474,8 @@ def list_menu_items(
     open_now: bool | None = Query(None, description="If true, only items at restaurants open right now (America/New_York)"),
     service_mode: str | None = Query(
         None,
-        pattern=r"^(dine_in|takeout)$",
-        description="'dine_in' or 'takeout' -- excludes only restaurants Google has explicitly confirmed do NOT offer that mode; restaurants with no data yet (null) are kept, not excluded.",
+        pattern=r"^(dine_in|takeout|pickup|delivery)$",
+        description="dine_in / takeout / pickup / delivery -- excludes only restaurants Google has explicitly confirmed do NOT offer that mode; restaurants with no data yet (null) are kept, not excluded. pickup uses the same Google takeout flag as takeout.",
     ),
     pizza_serving: str | None = Query(
         None,
@@ -508,6 +523,7 @@ def list_menu_items(
         at_day=at_day,
         at_time=at_time,
         at_until=at_until,
+        family_dishes=compare_family(intent.dish),
         db=db,
     )
     intent_ranked = sort == "relevance" and bool(parsed.tokens)

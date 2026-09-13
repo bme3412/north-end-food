@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
 import { PriceLadder } from "@/components/PriceLadder";
-import { SimilarDishesCarousel } from "@/components/SimilarDishesCarousel";
 import { dishGroupMedian, oneItemPerRestaurant, type DishGroup } from "@/lib/dishGroups";
 import type { MenuItem, PlaceMatch } from "@/lib/types";
 
@@ -43,13 +42,11 @@ function itemToPlaceMatch(item: MenuItem): PlaceMatch {
 export function DishFocusPage({
   group,
   showMap = false,
-  onSelectDish,
   onBack,
   onOpen,
 }: {
   group: DishGroup;
   showMap?: boolean;
-  onSelectDish: (dishName: string) => void;
   onBack?: () => void;
   onOpen?: (item: MenuItem) => void;
 }) {
@@ -84,9 +81,6 @@ export function DishFocusPage({
   }, [restaurantItems]);
 
   const selectedItem = restaurantItems.find((item) => item.restaurant_id === selectedId) ?? null;
-  const similar = group.items[0]?.canonical_dish ? (
-    <SimilarDishesCarousel canonicalDish={group.items[0].canonical_dish} onSelectDish={onSelectDish} />
-  ) : null;
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5">
@@ -107,7 +101,6 @@ export function DishFocusPage({
             medianPrice={medianPrice}
             onOpen={(item) => onOpen?.(item)}
           />
-          {!showMap ? similar : null}
         </div>
 
         {showMap ? (
@@ -142,7 +135,6 @@ export function DishFocusPage({
               </span>
             </button>
           </div>
-          {similar}
         </div>
         ) : null}
       </div>

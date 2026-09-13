@@ -139,6 +139,8 @@ class MenuItemOut(BaseModel):
     takeout: bool | None = None
     dine_in: bool | None = None
     delivery: bool | None = None
+    official_website: str | None = None
+    busyness_percent: int | None = None
     menu_snapshot_id: str
     retrieved_at: datetime | None = None
     source_url: str | None = None

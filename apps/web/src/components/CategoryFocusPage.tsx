@@ -117,9 +117,7 @@ export function CategoryFocusPage({
                     onSelectDish(
                       dish.pizza_serving === "slice"
                         ? `slice ${dish.canonical_name}`
-                        : dish.pizza_serving === "whole"
-                          ? `whole ${dish.canonical_name}`
-                          : dish.canonical_name,
+                        : dish.canonical_name,
                     )
                   }
                   className="flex flex-col gap-2 rounded-xl border border-line bg-card p-3 text-left shadow-[0_1px_3px_rgba(23,27,32,0.04)] transition-colors hover:border-primary/30 hover:bg-primary-soft/30"

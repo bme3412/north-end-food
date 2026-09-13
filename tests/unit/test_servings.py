@@ -25,8 +25,14 @@ def test_classifies_whole_from_explicit_unit_or_diameter():
     assert classify(size="12″") == "whole"
 
 
+def test_unmarked_pizza_is_a_whole_pie():
+    assert classify(raw_name="Cheese Pizza", portion=None, size=None) == "whole"
+    assert classify(raw_name="Cheese Pizza", size="x-large") == "whole"
+    assert classify(raw_name="Napoletana", size="whole") == "whole"
+
+
 def test_does_not_mistake_sliced_toppings_for_a_slice():
-    assert classify(raw_name="Prosciutto Pizza", portion=None, size=None) == "unknown"
+    assert classify(raw_name="Prosciutto Pizza", portion=None, size=None) == "whole"
     assert (
         classify_pizza_serving(
             canonical_category="antipasti",

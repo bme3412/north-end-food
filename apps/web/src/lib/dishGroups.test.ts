@@ -27,13 +27,42 @@ describe("pizza dish grouping", () => {
     expect(groups.map((group) => group.key)).toEqual([
       "MARGHERITA::slice",
       "MARGHERITA::whole",
-      "MARGHERITA::unknown",
     ]);
     expect(groups.map((group) => group.displayName)).toEqual([
       "Margherita — Slice",
       "Margherita — Whole pizza",
-      "Margherita — Serving size unclear",
     ]);
+    expect(groups[1].restaurantCount).toBe(2);
+  });
+
+  it("folds margherita pies onto the cheese pizza compare", () => {
+    const cheese = {
+      ...pizza("regina", "whole", "17.5"),
+      canonical_dish: "CHEESE_PIZZA",
+      restaurant_id: "regina",
+      raw_name: "Cheese Pizza",
+    };
+    const margheritaSameKitchen = {
+      ...pizza("regina-m", "whole", "27"),
+      restaurant_id: "regina",
+      raw_name: "Margherita",
+    };
+    const margheritaOnly = {
+      ...pizza("tresca", "whole", "21"),
+      restaurant_id: "tresca",
+      raw_name: "Margherita",
+    };
+    const groups = groupItemsByDish([cheese, margheritaSameKitchen, margheritaOnly]);
+    const cheeseGroup = groups.find((group) => group.key === "CHEESE_PIZZA::whole");
+    const margheritaGroup = groups.find((group) => group.key === "MARGHERITA::whole");
+
+    expect(cheeseGroup?.restaurantCount).toBe(2);
+    expect(cheeseGroup?.items.map((item) => item.raw_name)).toEqual([
+      "Cheese Pizza",
+      "Margherita",
+      "Margherita",
+    ]);
+    expect(margheritaGroup?.restaurantCount).toBe(2);
   });
 });
 

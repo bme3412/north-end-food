@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 import { RestaurantPhoto } from "@/components/RestaurantPhoto";
+import { TakeoutBadges, TakeoutPriceBlock, TakeoutSecondaryPrice } from "@/components/TakeoutMeta";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory, prettyDish } from "@/lib/format";
+import { isTakeoutMode, useServiceMode } from "@/lib/serviceMode";
+import { orderPath } from "@/lib/takeoutTraits";
 import type { MenuItem } from "@/lib/types";
 
 export function ItemSheet({
@@ -14,6 +17,9 @@ export function ItemSheet({
   item: MenuItem | null;
   onClose: () => void;
 }) {
+  const { mode } = useServiceMode();
+  const takeout = isTakeoutMode(mode);
+
   useEffect(() => {
     if (!item) return;
     document.body.classList.add("sheet-open");
@@ -28,6 +34,8 @@ export function ItemSheet({
   }, [item, onClose]);
 
   if (!item) return null;
+
+  const order = orderPath(item);
 
   return (
     <div className="fixed inset-0 z-40">
@@ -50,8 +58,11 @@ export function ItemSheet({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-2xl font-bold leading-tight">{item.raw_name}</h2>
-              <p className="shrink-0 text-xl font-bold text-tomato">{formatPrice(item)}</p>
+              <p className="shrink-0 text-xl font-bold text-tomato">
+                {takeout ? <TakeoutPriceBlock item={item} mode={mode} /> : formatPrice(item)}
+              </p>
             </div>
+            {takeout ? <TakeoutSecondaryPrice item={item} mode={mode} /> : null}
             {item.north_end_median_price != null && item.pct_vs_median != null ? (
               <p className="mt-1 text-sm text-muted">
                 North End median: {formatDollars(item.north_end_median_price)}
@@ -78,6 +89,7 @@ export function ItemSheet({
                 </span>
               ) : null}
             </div>
+            {takeout ? <TakeoutBadges item={item} /> : null}
           </div>
         </div>
         {item.raw_description ? (
@@ -106,12 +118,25 @@ export function ItemSheet({
           </p>
         ) : null}
         <div className="mt-6 flex gap-3">
-          {item.source_url ? (
+          {takeout && order.href ? (
+            <a
+              href={order.href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-white"
+            >
+              {order.label}
+            </a>
+          ) : takeout ? (
+            <p className="flex-1 rounded-lg bg-linen px-4 py-3 text-center text-sm font-bold text-ink">
+              {order.label}
+            </p>
+          ) : item.source_url ? (
             <a
               href={item.source_url}
               target="_blank"
               rel="noreferrer"
-            className="flex-1 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-white"
+              className="flex-1 rounded-lg bg-primary px-4 py-3 text-center text-sm font-bold text-white"
             >
               Official menu
             </a>

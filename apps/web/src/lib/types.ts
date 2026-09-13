@@ -114,6 +114,8 @@ export type MenuItem = {
   takeout: boolean | null;
   dine_in: boolean | null;
   delivery: boolean | null;
+  official_website: string | null;
+  busyness_percent: number | null;
   menu_snapshot_id: string;
   retrieved_at: string | null;
   source_url: string | null;

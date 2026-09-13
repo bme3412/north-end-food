@@ -41,6 +41,8 @@ function item(partial: Partial<MenuItem> & Pick<MenuItem, "menu_item_id" | "rest
     takeout: null,
     dine_in: null,
     delivery: null,
+    official_website: null,
+    busyness_percent: null,
     menu_snapshot_id: "snap",
     retrieved_at: null,
     source_url: null,

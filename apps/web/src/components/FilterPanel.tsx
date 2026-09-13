@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ChevronDown, Map, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
+import { Bike, ChevronDown, Map, Settings2, ShoppingBag, Tag, Utensils, X } from "lucide-react";
 
 import { SearchBox } from "@/components/SearchBox";
 import { useAsOfTime } from "@/lib/asOfTime";
@@ -310,7 +310,7 @@ const SORT_LABELS: Record<FilterState["sort"], string> = {
   name: "Name",
 };
 
-// The quick-access row from the mockup: sort, open-now, dine-in/takeout,
+// The quick-access row from the mockup: sort, open-now, dine-in/pickup/delivery,
 // a one-tap price cap, and the trigger for the full filter drawer below.
 // Reads/writes the same shared contexts the header does (useAsOfTime,
 // useServiceMode) so toggling here and toggling in the header always agree
@@ -368,8 +368,11 @@ function FilterChipRow({
       <ChipToggle active={mode === "dine-in"} onClick={() => setMode("dine-in")}>
         <Utensils className="size-3.5" aria-hidden="true" /> Dine-in
       </ChipToggle>
-      <ChipToggle active={mode === "takeout"} onClick={() => setMode("takeout")}>
-        <ShoppingBag className="size-3.5" aria-hidden="true" /> Takeout
+      <ChipToggle active={mode === "pickup"} onClick={() => setMode("pickup")}>
+        <ShoppingBag className="size-3.5" aria-hidden="true" /> Pickup
+      </ChipToggle>
+      <ChipToggle active={mode === "delivery"} onClick={() => setMode("delivery")}>
+        <Bike className="size-3.5" aria-hidden="true" /> Delivery
       </ChipToggle>
 
       <ChipToggle

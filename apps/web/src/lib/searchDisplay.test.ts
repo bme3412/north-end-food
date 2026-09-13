@@ -42,8 +42,20 @@ describe("pickSearchView", () => {
       pickSearchView({
         ...base,
         resolvedDish: "CARBONARA",
+        groupKeys: ["CARBONARA", "CARBONARA"],
       }),
     ).toEqual({ kind: "dish", groupKey: "CARBONARA" });
+  });
+
+  it("opens lobster ravioli even when the same group is listed twice", () => {
+    expect(
+      pickSearchView({
+        ...base,
+        q: "lobster ravioli",
+        resolvedDish: "LOBSTER_RAVIOLI",
+        groupKeys: ["LOBSTER_RAVIOLI", "RAVIOLI", "LOBSTER_RAVIOLI", "GNOCCHI_LOBSTER"],
+      }),
+    ).toEqual({ kind: "dish", groupKey: "LOBSTER_RAVIOLI" });
   });
 
   it("does not collapse a restaurant-name search onto the first dish", () => {
@@ -77,7 +89,7 @@ describe("pickSearchView", () => {
     ).toEqual({ kind: "dish", groupKey: "CARBONARA" });
   });
 
-  it("stays on the list when one pizza has multiple serving groups", () => {
+  it("opens the pie compare when a pizza query has slice and whole groups", () => {
     expect(
       pickSearchView({
         ...base,
@@ -85,7 +97,18 @@ describe("pickSearchView", () => {
         resolvedDish: "MARGHERITA",
         groupKeys: ["MARGHERITA::slice", "MARGHERITA::whole"],
       }),
-    ).toEqual({ kind: "list" });
+    ).toEqual({ kind: "dish", groupKey: "MARGHERITA::whole" });
+  });
+
+  it("opens cheese pizza compare across unmarked and whole pies", () => {
+    expect(
+      pickSearchView({
+        ...base,
+        q: "cheese pizza",
+        resolvedDish: "CHEESE_PIZZA",
+        groupKeys: ["CHEESE_PIZZA::whole", "CHEESE_PIZZA::slice", "CHEESE_PIZZA::whole::kids"],
+      }),
+    ).toEqual({ kind: "dish", groupKey: "CHEESE_PIZZA::whole" });
   });
 
   it("stays on the list when a pizza serving is parsed from the query", () => {

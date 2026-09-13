@@ -38,9 +38,15 @@ export function pickSearchView({
   }
 
   if (resolvedDish) {
-    const exactDishGroups = groupKeys.filter(
+    const exactDishGroups = [...new Set(groupKeys.filter(
       (key) => key === resolvedDish || key.startsWith(`${resolvedDish}::`),
+    ))];
+    const adultPies = exactDishGroups.filter(
+      (key) => !key.includes("::slice") && !key.includes("::kids"),
     );
+    if (!servingInPlay && adultPies.length === 1) {
+      return { kind: "dish", groupKey: adultPies[0] };
+    }
     if (exactDishGroups.length === 1) {
       return { kind: "dish", groupKey: exactDishGroups[0] };
     }

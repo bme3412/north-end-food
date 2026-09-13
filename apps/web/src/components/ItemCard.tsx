@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 
 import { DishVisual } from "@/components/DishVisual";
 import { SaveButton } from "@/components/SaveButton";
+import { TakeoutBadges, TakeoutPriceBlock, TakeoutSecondaryPrice } from "@/components/TakeoutMeta";
 import { formatDollars, formatItemPctVsMedian, formatPrice, prettyCategory } from "@/lib/format";
+import { isTakeoutMode, useServiceMode } from "@/lib/serviceMode";
 import type { MenuItem } from "@/lib/types";
 
 const LOW_CONFIDENCE_THRESHOLD = 0.7;
@@ -22,6 +26,8 @@ export function ItemCard({
   onOpen?: (item: MenuItem) => void;
   compact?: boolean;
 }) {
+  const { mode } = useServiceMode();
+  const takeout = isTakeoutMode(mode);
   return (
     <article
       className={`rounded-xl border border-line bg-card shadow-[0_1px_3px_rgba(23,27,32,0.04)] ${
@@ -45,7 +51,7 @@ export function ItemCard({
             {item.raw_name}
           </h2>
           <p className={`shrink-0 font-bold text-primary ${compact ? "text-sm" : "pt-1 text-base"}`}>
-            {formatPrice(item)}
+            {takeout ? <TakeoutPriceBlock item={item} mode={mode} /> : formatPrice(item)}
           </p>
         </div>
         {item.raw_description ? (
@@ -95,6 +101,8 @@ export function ItemCard({
         ) : null}
         <SaveButton kind="dish" item={item} compact />
       </div>
+      {takeout ? <TakeoutSecondaryPrice item={item} mode={mode} /> : null}
+      {takeout ? <TakeoutBadges item={item} compact /> : null}
       {item.north_end_median_price != null && item.pct_vs_median != null ? (
         <p className={`mt-1.5 text-xs text-muted ${compact ? "" : "text-[0.8rem]"}`}>
           North End median: {formatDollars(item.north_end_median_price)}

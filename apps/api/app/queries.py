@@ -92,7 +92,7 @@ def item_with_source_query(db: Session) -> Select:
         .join(MenuSource, MenuSnapshot.menu_source_id == MenuSource.menu_source_id)
         .join(Restaurant, MenuItem.restaurant_id == Restaurant.restaurant_id)
         .where(MenuItem.menu_snapshot_id.in_(select(latest)))
-        .options(selectinload(Restaurant.place_stats))
+        .options(selectinload(Restaurant.place_stats), selectinload(Restaurant.busyness_stats))
     )
 
 
@@ -304,6 +304,8 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
         if not dish_id:
             uncategorized_count += 1
             continue
+        if _KIDS_MENU.search(" ".join(filter(None, (portion, menu_section, raw_name)))):
+            continue
         pizza_serving = classify_pizza_serving(
             canonical_category=category,
             raw_name=raw_name,
@@ -318,6 +320,8 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
         entry["restaurant_ids"].add(restaurant_id)
         if price is not None and not market_price:
             entry["prices"].append(price)
+
+    _fold_margherita_into_cheese_pizza(by_dish)
 
     dishes = [
         CategoryDish(
@@ -342,9 +346,29 @@ def category_summary(db: Session, category: str, *, limit: int = 20) -> Category
     )
 
 
+def _fold_margherita_into_cheese_pizza(by_dish: dict[tuple[str, str | None], dict]) -> None:
+    """Count Margherita kitchens on the cheese-pizza category tile as well."""
+    servings = {serving for dish_id, serving in by_dish if dish_id in {"CHEESE_PIZZA", "MARGHERITA"}}
+    for serving in servings:
+        cheese = by_dish.get(("CHEESE_PIZZA", serving))
+        margherita = by_dish.get(("MARGHERITA", serving))
+        if not cheese or not margherita:
+            continue
+        cheese["restaurant_ids"].update(margherita["restaurant_ids"])
+        cheese["prices"].extend(margherita["prices"])
+
+
 SUGGEST_LIMIT = 5
 SUGGEST_MIN_CHARS = 2
 SUGGEST_SIMILARITY = 0.25
+_KIDS_MENU = re.compile(r"\bkids?\b|\bchild(?:ren)?\b|\bbambini\b", re.I)
+CHEESE_PIZZA_FAMILY = ("CHEESE_PIZZA", "MARGHERITA")
+
+
+def compare_family(dish_id: str | None) -> tuple[str, ...]:
+    if dish_id == "CHEESE_PIZZA":
+        return CHEESE_PIZZA_FAMILY
+    return (dish_id,) if dish_id else ()
 
 
 @dataclass(frozen=True)
@@ -453,16 +477,35 @@ def suggest_search(db: Session, raw_query: str | None, *, limit: int = SUGGEST_L
         )
         .limit(limit)
     ).all()
+    include_family = any(dish.canonical_dish_id == "CHEESE_PIZZA" for dish, _count in dish_rows)
+    family_count = _cheese_pizza_family_restaurant_count(db) if include_family else 0
     dishes = [
         DishSuggestion(
             canonical_dish=dish.canonical_dish_id,
             canonical_name=dish.canonical_name,
             category=dish.category,
-            restaurant_count=int(count),
+            restaurant_count=family_count if dish.canonical_dish_id == "CHEESE_PIZZA" else int(count),
         )
         for dish, count in dish_rows
     ]
     return SearchSuggestions(restaurants=restaurants, dishes=dishes)
+
+
+def _cheese_pizza_family_restaurant_count(db: Session) -> int:
+    latest = latest_snapshot_ids(db).subquery()
+    rows = db.execute(
+        select(MenuItem.restaurant_id, MenuItem.raw_name, MenuItem.menu_section, MenuItem.portion).where(
+            MenuItem.canonical_dish.in_(CHEESE_PIZZA_FAMILY),
+            MenuItem.menu_snapshot_id.in_(select(latest)),
+        )
+    ).all()
+    return len(
+        {
+            restaurant_id
+            for restaurant_id, raw_name, menu_section, portion in rows
+            if not _KIDS_MENU.search(" ".join(filter(None, (portion, menu_section, raw_name))))
+        }
+    )
 
 
 def resolve_search_intent(db: Session, raw_query: str | None) -> SearchIntent:
@@ -486,11 +529,18 @@ def resolve_search_intent(db: Session, raw_query: str | None) -> SearchIntent:
     if not normalized:
         return SearchIntent()
 
+    dish_queries = {normalized}
+    for prefix in ("whole ", "slice ", "full "):
+        if normalized.startswith(prefix):
+            rest = normalized[len(prefix) :].strip()
+            if rest:
+                dish_queries.add(rest)
+
     for dish_id, canonical_name, aliases in db.execute(
         select(CanonicalDish.canonical_dish_id, CanonicalDish.canonical_name, CanonicalDish.aliases)
     ).all():
         candidates = {canonical_name.strip().lower()} | {alias.strip().lower() for alias in (aliases or [])}
-        if normalized in candidates:
+        if dish_queries & candidates:
             return SearchIntent(dish=dish_id)
 
     restaurant_id, restaurant_name = _unique_restaurant_match(db, normalized)

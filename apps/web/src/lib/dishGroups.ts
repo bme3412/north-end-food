@@ -88,10 +88,13 @@ export function isKidsItem(item: Pick<MenuItem, "portion" | "menu_section" | "ra
   return /\bkids?\b|\bchild(?:ren)?\b|\bbambini\b/.test(haystack);
 }
 
+export function pizzaCompareServing(serving: MenuItem["pizza_serving"]): "slice" | "whole" {
+  return serving === "slice" ? "slice" : "whole";
+}
+
 export function pizzaServingLabel(serving: MenuItem["pizza_serving"]): string | null {
   if (serving === "slice") return "Slice";
-  if (serving === "whole") return "Whole pizza";
-  if (serving === "unknown") return "Serving size unclear";
+  if (serving === "whole" || serving === "unknown") return "Whole pizza";
   return null;
 }
 
@@ -113,7 +116,7 @@ export function oneItemPerRestaurant(items: MenuItem[]): MenuItem[] {
 export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
   const byKey = new Map<string, MenuItem[]>();
   for (const item of items) {
-    const servingKey = item.canonical_category === "pizza" ? `::${item.pizza_serving ?? "unknown"}` : "";
+    const servingKey = item.canonical_category === "pizza" ? `::${pizzaCompareServing(item.pizza_serving)}` : "";
     const kidsKey = isKidsItem(item) ? "::kids" : "";
     const variant = compareVariant(item);
     const dish = item.canonical_dish ?? "";
@@ -156,7 +159,34 @@ export function groupItemsByDish(items: MenuItem[]): DishGroup[] {
     });
   }
 
-  return groups;
+  return foldMargheritaIntoCheesePizza(groups);
+}
+
+/** A North End "cheese pizza" is often listed as Margherita. Keep Margherita
+ * as its own card, and also put those pies on the cheese-pizza ladder. */
+function foldMargheritaIntoCheesePizza(groups: DishGroup[]): DishGroup[] {
+  const extras = new Map<string, MenuItem[]>();
+  for (const group of groups) {
+    if (!group.key.startsWith("MARGHERITA") || group.key.includes("::kids")) continue;
+    const cheeseKey = group.key.replace(/^MARGHERITA/, "CHEESE_PIZZA");
+    if (groups.some((entry) => entry.key === cheeseKey)) {
+      extras.set(cheeseKey, group.items);
+    }
+  }
+  if (!extras.size) return groups;
+
+  return groups.map((group) => {
+    const added = extras.get(group.key);
+    if (!added) return group;
+    const items = [...group.items, ...added];
+    return {
+      ...group,
+      items,
+      restaurantCount: new Set(items.map((item) => item.restaurant_id)).size,
+      ...priceStats(items),
+      useLocalMedian: true,
+    };
+  });
 }
 
 export type DishSection = {
@@ -165,7 +195,7 @@ export type DishSection = {
   groups: DishGroup[];
 };
 
-const SINGLETON_ORDER = ["slice", "whole", "calzone", "build", "pizza-other"];
+const SINGLETON_ORDER = ["slice", "whole", "calzone", "build"];
 
 function singletonBucket(group: DishGroup): { key: string; title: string } {
   const item = group.items[0];
@@ -176,8 +206,7 @@ function singletonBucket(group: DishGroup): { key: string; title: string } {
   }
   if (item?.canonical_category === "pizza" || /\bpizza\b/.test(name)) {
     if (item?.pizza_serving === "slice") return { key: "slice", title: "By the slice" };
-    if (item?.pizza_serving === "whole") return { key: "whole", title: "Whole pies" };
-    return { key: "pizza-other", title: "Other pizza" };
+    return { key: "whole", title: "Whole pies" };
   }
   const category = item?.canonical_category;
   if (category) return { key: `cat-${category}`, title: prettyCategory(category) };

@@ -222,6 +222,13 @@ def test_service_mode_filter_excludes_only_confirmed_false(client, db_session):
     assert excluded["total"] == 0
     assert kept["total"] > 0
 
+    db_session.add(RestaurantPlaceStats(restaurant_id="NE_0001", delivery=False))
+    db_session.commit()
+    delivery_only = client.get("/menu-items", params={"service_mode": "delivery", "restaurant_id": "NE_0001"}).json()
+    pickup_alias = client.get("/menu-items", params={"service_mode": "pickup", "restaurant_id": "NE_0001"}).json()
+    assert delivery_only["total"] == 0
+    assert pickup_alias["total"] > 0
+
 
 def test_menu_item_not_found(client):
     response = client.get("/menu-items/00000000-0000-0000-0000-000000000000")
@@ -332,3 +339,23 @@ def test_pizza_serving_filter_keeps_slice_and_whole_price_benchmarks_separate(cl
     assert whole["total"] >= 1
     assert all(item["pizza_serving"] == "whole" for item in whole["items"])
     assert all(Decimal(item["north_end_median_price"]) != Decimal("5") for item in whole["items"])
+
+
+def test_pizza_category_summary_keeps_unmarked_cheese_pies_with_whole(client):
+    summary = client.get("/menu-items/category-summary", params={"category": "pizza"}).json()
+    cheese = [dish for dish in summary["dishes"] if dish["canonical_dish"] == "CHEESE_PIZZA"]
+    servings = {dish["pizza_serving"] for dish in cheese}
+    assert "unknown" not in servings
+    whole = next(dish for dish in cheese if dish["pizza_serving"] == "whole")
+    assert whole["restaurant_count"] >= 9
+
+
+def test_cheese_pizza_search_includes_margherita_only_kitchens(client):
+    body = client.get("/menu-items", params={"q": "cheese pizza", "limit": 200}).json()
+    assert body["resolved_dish"] == "CHEESE_PIZZA"
+    family = [item for item in body["items"] if item["canonical_dish"] in {"CHEESE_PIZZA", "MARGHERITA"}]
+    names = {item["restaurant_name"] for item in family}
+    assert "Tresca" in names
+    assert "Antico Forno" in names
+    assert "Vinoteca di Monica" in names
+    assert "Pizzeria Regina" in names
